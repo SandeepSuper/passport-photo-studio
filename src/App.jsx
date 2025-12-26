@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { removeBackground } from '@imgly/background-removal';
-import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera } from 'lucide-react';
+import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2 } from 'lucide-react';
 import getCroppedImg from './canvasUtils';
 import './index.css';
 
@@ -469,14 +469,14 @@ function App() {
     };
 
     return (
-        <div className="flex min-h-screen text-slate-100">
+        <div className="flex flex-col md:flex-row min-h-screen text-slate-100 font-sans bg-slate-950">
             {/* Sidebar */}
-            <aside className="w-72 bg-slate-900 border-r border-slate-700 p-6 flex-shrink-0">
-                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-8">
+            <aside className="w-full md:w-72 bg-slate-900 border-b md:border-r border-slate-800 md:border-slate-700 p-4 md:p-6 flex-shrink-0 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible no-scrollbar">
+                <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-0 md:mb-8 whitespace-nowrap hidden md:block">
                     Passport Studio
                 </h1>
 
-                <div className="space-y-2">
+                <div className="flex flex-row md:flex-col gap-2 min-w-max md:min-w-0">
                     {STEPS.map((s) => {
                         const Icon = s.icon;
                         const active = step === s.id;
@@ -485,15 +485,15 @@ function App() {
                             <button key={s.id}
                                 onClick={() => handleStepClick(s.id)}
                                 disabled={!avail}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${active ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30' :
+                                className={`flex items-center gap-3 p-2 md:p-3 rounded-lg transition-all text-left whitespace-nowrap ${active ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30' :
                                     avail ? 'text-slate-300 hover:bg-slate-800 cursor-pointer' : 'text-slate-600 cursor-not-allowed opacity-50'
                                     }`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border ${active ? 'border-indigo-500 bg-indigo-500 text-white' :
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border flex-shrink-0 ${active ? 'border-indigo-500 bg-indigo-500 text-white' :
                                     avail ? 'border-slate-500 bg-slate-700' : 'border-slate-700 bg-slate-800'
                                     }`}>
                                     {s.id}
                                 </div>
-                                <span className="font-medium">{s.name}</span>
+                                <span className="font-medium text-sm md:text-base">{s.name}</span>
                             </button>
                         )
                     })}
@@ -503,7 +503,7 @@ function App() {
             {/* Main Section Wrapper */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* Header */}
-                <header className="flex justify-between items-center p-6 border-b border-slate-700 bg-slate-800 flex-shrink-0 relative">
+                <header className="flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
                     <div className="flex items-center gap-2">
                         <div className="bg-indigo-600 p-2 rounded">
                             <ImageIcon size={24} />
@@ -565,11 +565,11 @@ function App() {
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 p-8 overflow-y-auto bg-slate-900 relative">
+                <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-950 relative w-full">
                     {loading && (
                         <div className="fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-                            <div className="custom-loader mb-4 border-indigo-500"></div>
-                            <p className="text-xl font-medium">{loadingMsg || 'Processing...'}</p>
+                            <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-4" />
+                            <p className="text-2xl font-bold text-white">{loadingMsg || 'Processing...'}</p>
                         </div>
                     )}
 
