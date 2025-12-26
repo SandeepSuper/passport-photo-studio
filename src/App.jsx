@@ -469,7 +469,45 @@ function App() {
     };
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen text-slate-100 font-sans bg-slate-950">
+        <div className="flex flex-col md:flex-row h-screen overflow-hidden text-slate-100 font-sans bg-slate-950">
+            {/* Mobile Header */}
+            <header className="flex md:hidden justify-between items-center p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-20">
+                <div className="flex items-center gap-2">
+                    <div className="bg-indigo-600 p-2 rounded">
+                        <ImageIcon size={24} />
+                    </div>
+                    <h1 className="text-xl font-bold">Passport Studio</h1>
+                </div>
+                {/* Mobile User Menu Trigger */}
+                <div className="relative">
+                    <button
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                    >
+                        <div className="bg-indigo-500 rounded-full p-1">
+                            <User size={20} />
+                        </div>
+                    </button>
+                    {/* Simplified Mobile Dropdown */}
+                    {showUserMenu && (
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50">
+                            {user ? (
+                                <div className="py-1">
+                                    <div className="px-4 py-3 border-b border-slate-700">
+                                        <p className="text-sm text-white truncate">{user.email}</p>
+                                    </div>
+                                    <button onClick={() => { handleLogout(); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"><LogOut size={16} /> Logout</button>
+                                </div>
+                            ) : (
+                                <div className="py-1">
+                                    <button onClick={() => { setAuthMode('login'); setShowAuthModal(true); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-indigo-400 hover:bg-slate-700 flex items-center gap-2"><User size={16} /> Login</button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </header>
+
             {/* Sidebar */}
             <aside className="w-full md:w-72 bg-slate-900 border-b md:border-r border-slate-800 md:border-slate-700 p-4 md:p-6 flex-shrink-0 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible no-scrollbar">
                 <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-0 md:mb-8 whitespace-nowrap hidden md:block">
@@ -502,8 +540,8 @@ function App() {
 
             {/* Main Section Wrapper */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                {/* Header */}
-                <header className="flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
+                {/* Header (Desktop) */}
+                <header className="hidden md:flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
                     <div className="flex items-center gap-2">
                         <div className="bg-indigo-600 p-2 rounded">
                             <ImageIcon size={24} />
@@ -828,9 +866,7 @@ function App() {
                                     <Wand2 size={20} />
                                     <span>Remove Background & Apply Color</span>
                                 </button>
-                                <p className="text-xs text-slate-500 mt-4 max-w-xs text-center">
-                                    * This downloads ~40MB of AI models the first time. It runs entirely in your browser.
-                                </p>
+
                             </div>
                         )}
 
