@@ -278,7 +278,8 @@ function App() {
     };
 
     const generateSheet = async () => {
-        if (!bgRemovedImage) return;
+        const sourceImage = bgRemovedImage || enhancedImage || croppedImage;
+        if (!sourceImage) return;
         setLoading(true);
 
         try {
@@ -298,7 +299,7 @@ function App() {
             ctx.fillRect(0, 0, width, height);
 
             const img = new Image();
-            img.src = bgRemovedImage;
+            img.src = sourceImage;
             await new Promise(r => img.onload = r);
 
             // Grid 4x2
@@ -771,11 +772,11 @@ function App() {
                             </div>
                         )}
 
-                        {step === 5 && bgRemovedImage && (
+                        {step === 5 && (bgRemovedImage || enhancedImage || croppedImage) && (
                             <div className="card flex flex-col items-center">
                                 <h2 className="text-2xl font-bold mb-6">Review Final Photo</h2>
                                 <div className="p-4 bg-white rounded shadow-lg mb-8">
-                                    <img src={bgRemovedImage} className="max-h-[400px]" />
+                                    <img src={bgRemovedImage || enhancedImage || croppedImage} className="max-h-[400px]" />
                                 </div>
 
                                 <div className="flex gap-4">
