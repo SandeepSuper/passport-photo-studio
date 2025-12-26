@@ -656,6 +656,25 @@ function App() {
                                         objectFit="contain"
                                     />
                                 </div>
+
+                                <div className="flex items-center gap-8 mb-6">
+                                    <div className="flex-1">
+                                        <label className="block text-sm text-slate-400 mb-2">Zoom</label>
+                                        <input
+                                            type="range" min={1} max={3} step={0.1}
+                                            value={zoom} onChange={(e) => setZoom(Number(e.target.value))}
+                                            className="w-full accent-indigo-600"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-sm text-slate-400 mb-2">Rotation</label>
+                                        <input
+                                            type="range" min={0} max={360}
+                                            value={rotation} onChange={(e) => setRotation(Number(e.target.value))}
+                                            className="w-full accent-indigo-600"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         )}
 
