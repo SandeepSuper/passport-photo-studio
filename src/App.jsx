@@ -243,15 +243,14 @@ function App() {
     const handleRemoveBackground = async () => {
         if (!enhancedImage) return;
         setLoading(true);
-        setLoadingMsg('Downloading AI models & processing... (This happens locally)');
+        setLoadingMsg('0%');
 
         try {
-            // 1. Remove BG -> Returns Blob (PNG with transparency)
             // 1. Remove BG -> Returns Blob (PNG with transparency)
             const blob = await removeBackground(enhancedImage, {
                 progress: (key, current, total) => {
                     const percent = Math.round((current / total) * 100);
-                    setLoadingMsg(`Downloading AI models... ${percent}%`);
+                    setLoadingMsg(`${percent}%`);
                 }
             });
             const transparentUrl = URL.createObjectURL(blob);
