@@ -831,42 +831,72 @@ function App() {
 
                         {step === 5 && (bgRemovedImage || enhancedImage || croppedImage) && (
                             <div className="card flex flex-col items-center">
-                                <h2 className="text-2xl font-bold mb-6">Review Final Photo</h2>
-                                <div className="p-4 bg-white rounded shadow-lg mb-8">
-                                    <img src={bgRemovedImage || enhancedImage || croppedImage} className="max-h-[400px]" />
+                                <h2 className="text-3xl font-bold mb-2">Preview Sheet</h2>
+                                <p className="text-slate-400 mb-8">
+                                    Using: {bgRemovedImage ? 'Background Removed Image' : 'Original/Enhanced Image'}
+                                </p>
+
+                                <div className="p-2 bg-white rounded-lg shadow-xl mb-8 relative overflow-hidden inline-block">
+                                    <img
+                                        src={bgRemovedImage || enhancedImage || croppedImage}
+                                        className="h-64 w-auto object-cover rounded"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
+                                        <div className="transform -rotate-45 text-slate-500/30 text-2xl font-black whitespace-nowrap border-2 border-slate-500/30 p-2">
+                                            PASSPORT STUDIO
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-4">
-                                    <button className="btn-secondary" onClick={() => setStep(4)}>Back</button>
-                                    <button className="btn-primary" onClick={generateSheet}>Generate 4x6 Sheet</button>
+                                <div className="w-full max-w-md space-y-3">
+                                    <button
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-indigo-900/20"
+                                        onClick={generateSheet}
+                                    >
+                                        Generate 4×6 Sheet
+                                    </button>
+                                    <button
+                                        className="w-full text-slate-400 hover:text-white text-sm py-2"
+                                        onClick={() => setStep(4)}
+                                    >
+                                        Go Back
+                                    </button>
                                 </div>
                             </div>
                         )}
 
                         {step === 6 && !isPaid && (
-                            <div className="card text-center max-w-3xl mx-auto">
+                            <div className="card text-center max-w-4xl mx-auto">
                                 <h2 className="text-3xl font-bold mb-6">Review & Download</h2>
                                 {sheetImage && (
-                                    <div className="mb-8 p-4 bg-slate-800 rounded-lg inline-block">
-                                        <div className="relative">
-                                            <img src={sheetImage} className="max-h-[400px] w-auto block rounded shadow-md border border-slate-600" />
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
-                                                <div className="absolute inset-0 bg-slate-900/10"></div>
-                                                <div className="transform -rotate-45 text-slate-500/50 text-4xl font-black whitespace-nowrap tracking-widest border-4 border-slate-500/50 p-4">
-                                                    PASSPORT STUDIO
+                                    <div className="relative mb-8 inline-block">
+                                        <div className="bg-white p-2 rounded-lg shadow-2xl relative overflow-hidden">
+                                            <img
+                                                src={sheetImage}
+                                                className="max-h-[500px] w-auto block filter blur-sm transition-all duration-300"
+                                            />
+                                            {/* Preview Mode Badge */}
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="bg-black/80 text-white px-6 py-2 rounded-full text-sm font-medium backdrop-blur-md border border-white/10 shadow-xl z-10">
+                                                    Preview Mode
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-xs text-slate-400 mt-2">Preview (Watermarked)</p>
                                     </div>
                                 )}
 
                                 <div className="flex justify-center gap-4">
-                                    <button className="btn-primary px-8 py-3 text-lg flex items-center gap-2" onClick={handlePrintClick}>
-                                        <Printer /> Print Sheet
+                                    <button
+                                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                        onClick={handlePrintClick}
+                                    >
+                                        <Printer size={20} /> Print
                                     </button>
-                                    <button className="btn-secondary px-8 py-3 text-lg flex items-center gap-2" onClick={handleDownloadClick}>
-                                        Download
+                                    <button
+                                        className="bg-slate-700 hover:bg-slate-600 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                        onClick={handleDownloadClick}
+                                    >
+                                        <CreditCard size={20} /> Download
                                     </button>
                                 </div>
                             </div>
