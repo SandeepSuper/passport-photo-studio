@@ -599,6 +599,63 @@ function App() {
                         </div>
                     )}
 
+                    {/* Payment Modal */}
+                    {showPaymentModal && (
+                        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-2xl w-full shadow-2xl relative">
+                                <button onClick={() => setShowPaymentModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+                                <h2 className="text-3xl font-bold mb-8 text-center">Select a Plan</h2>
+
+                                <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                    {/* Plan 1: Single */}
+                                    <div
+                                        onClick={() => setSelectedPlan('single')}
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'single' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                                    >
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-lg">Single Sheet</span>
+                                            <span className="text-xl font-bold">₹699</span>
+                                        </div>
+                                        <p className="text-slate-400 text-sm text-left">One-time processing & download</p>
+                                    </div>
+
+                                    {/* Plan 2: Pro */}
+                                    <div
+                                        onClick={() => setSelectedPlan('pro')}
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${selectedPlan === 'pro' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                                    >
+                                        <div className="absolute -top-3 right-4 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                                            BEST VALUE
+                                        </div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-lg">Pro Subscription</span>
+                                            <span className="text-xl font-bold">₹1999</span>
+                                        </div>
+                                        <p className="text-slate-400 text-sm text-left">Unlimited downloads for 1 month</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        if (selectedPlan === 'pro' && !user) {
+                                            setAuthMode('signup');
+                                            setShowAuthModal(true);
+                                        } else {
+                                            completePayment();
+                                        }
+                                    }}
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
+                                >
+                                    {selectedPlan === 'pro' ? 'Subscribe for ₹1999' : 'Pay ₹699 Now'}
+                                </button>
+
+                                <p className="text-center text-xs text-slate-500 mt-4">
+                                    Secure payment powered by Razorpay
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="max-w-4xl mx-auto">
                         {step === 1 && (
                             <div className="bg-slate-800 rounded-xl p-12 border-2 border-dashed border-slate-600 text-center hover:border-indigo-500 transition-colors">
@@ -788,60 +845,22 @@ function App() {
 
                         {step === 6 && !isPaid && (
                             <div className="card text-center max-w-3xl mx-auto">
-                                <h2 className="text-3xl font-bold mb-8">Select a Plan</h2>
+                                <h2 className="text-3xl font-bold mb-6">Review & Download</h2>
                                 {sheetImage && (
                                     <div className="mb-8 p-4 bg-slate-800 rounded-lg inline-block">
-                                        <img src={sheetImage} className="h-48 rounded shadow-md border border-slate-600" />
+                                        <img src={sheetImage} className="max-h-[400px] w-auto block rounded shadow-md border border-slate-600" />
                                         <p className="text-xs text-slate-400 mt-2">Preview (Watermarked)</p>
                                     </div>
                                 )}
 
-                                <div className="grid md:grid-cols-2 gap-6 mb-8">
-                                    {/* Plan 1: Single */}
-                                    <div
-                                        onClick={() => setSelectedPlan('single')}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'single' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
-                                    >
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-lg">Single Sheet</span>
-                                            <span className="text-xl font-bold">₹699</span>
-                                        </div>
-                                        <p className="text-slate-400 text-sm text-left">One-time processing & download</p>
-                                    </div>
-
-                                    {/* Plan 2: Pro */}
-                                    <div
-                                        onClick={() => setSelectedPlan('pro')}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${selectedPlan === 'pro' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
-                                    >
-                                        <div className="absolute -top-3 right-4 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
-                                            BEST VALUE
-                                        </div>
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="font-bold text-lg">Pro Subscription</span>
-                                            <span className="text-xl font-bold">₹1999</span>
-                                        </div>
-                                        <p className="text-slate-400 text-sm text-left">Unlimited downloads for 1 month</p>
-                                    </div>
+                                <div className="flex justify-center gap-4">
+                                    <button className="btn-primary px-8 py-3 text-lg flex items-center gap-2" onClick={handlePrintClick}>
+                                        <Printer /> Print Sheet
+                                    </button>
+                                    <button className="btn-secondary px-8 py-3 text-lg flex items-center gap-2" onClick={handleDownloadClick}>
+                                        Download
+                                    </button>
                                 </div>
-
-                                <button
-                                    onClick={() => {
-                                        if (selectedPlan === 'pro' && !user) {
-                                            setAuthMode('signup');
-                                            setShowAuthModal(true);
-                                        } else {
-                                            completePayment();
-                                        }
-                                    }}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
-                                >
-                                    {selectedPlan === 'pro' ? 'Subscribe for ₹1999' : 'Pay ₹699 Now'}
-                                </button>
-
-                                <p className="text-center text-xs text-slate-500 mt-4">
-                                    Secure payment powered by Razorpay
-                                </p>
                             </div>
                         )}
 
