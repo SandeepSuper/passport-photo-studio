@@ -247,7 +247,13 @@ function App() {
 
         try {
             // 1. Remove BG -> Returns Blob (PNG with transparency)
-            const blob = await removeBackground(enhancedImage);
+            // 1. Remove BG -> Returns Blob (PNG with transparency)
+            const blob = await removeBackground(enhancedImage, {
+                progress: (key, current, total) => {
+                    const percent = Math.round((current / total) * 100);
+                    setLoadingMsg(`Downloading AI models... ${percent}%`);
+                }
+            });
             const transparentUrl = URL.createObjectURL(blob);
 
             // 2. Composite over bgColor
