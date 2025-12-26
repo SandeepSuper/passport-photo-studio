@@ -848,7 +848,15 @@ function App() {
                                 <h2 className="text-3xl font-bold mb-6">Review & Download</h2>
                                 {sheetImage && (
                                     <div className="mb-8 p-4 bg-slate-800 rounded-lg inline-block">
-                                        <img src={sheetImage} className="max-h-[400px] w-auto block rounded shadow-md border border-slate-600" />
+                                        <div className="relative">
+                                            <img src={sheetImage} className="max-h-[400px] w-auto block rounded shadow-md border border-slate-600" />
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
+                                                <div className="absolute inset-0 bg-slate-900/10"></div>
+                                                <div className="transform -rotate-45 text-slate-500/50 text-4xl font-black whitespace-nowrap tracking-widest border-4 border-slate-500/50 p-4">
+                                                    PASSPORT STUDIO
+                                                </div>
+                                            </div>
+                                        </div>
                                         <p className="text-xs text-slate-400 mt-2">Preview (Watermarked)</p>
                                     </div>
                                 )}
