@@ -613,7 +613,7 @@ function App() {
 
                     {/* Auth Modal */}
                     {showAuthModal && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                             <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
                                 <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
                                 <h3 className="text-2xl font-bold mb-6 text-center">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h3>
