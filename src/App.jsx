@@ -395,10 +395,7 @@ function App() {
                     if (pendingAction === 'print') {
                         setTimeout(() => doPrint(), 500);
                     } else if (pendingAction === 'download') {
-                        const link = document.createElement("a");
-                        link.href = sheetImage;
-                        link.download = "passport-photo.jpg";
-                        link.click();
+                        downloadSheet();
                     }
                     setPendingAction(null);
                 }, 1000);
@@ -438,6 +435,16 @@ function App() {
         win.document.close();
     }
 
+    const downloadSheet = () => {
+        if (!sheetImage) return;
+        const link = document.createElement("a");
+        link.href = sheetImage;
+        link.download = "passport-photo.jpg";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handlePrintClick = () => {
         if (isPaid) {
             doPrint();
@@ -450,6 +457,8 @@ function App() {
         if (!isPaid) {
             e.preventDefault();
             triggerPayment('download');
+        } else {
+            downloadSheet();
         }
     };
 
