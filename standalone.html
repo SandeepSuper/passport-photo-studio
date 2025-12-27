@@ -23,28 +23,11 @@
             font-family: 'Inter', sans-serif;
             background-color: #0f172a;
             color: white;
+            margin: 0;
+            min-height: 100vh;
         }
 
-        .custom-loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid #FFF;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        /* Keep any custom styles if needed, though Tailwind handles most */
     </style>
 
     <!-- Import Map for Clean Imports -->
@@ -85,9 +68,9 @@
         import ReactDOM from 'react-dom/client';
         import CropperModule from 'react-easy-crop';
         import { removeBackground } from '@imgly/background-removal';
-        import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera } from 'lucide-react';
+        import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2 } from 'lucide-react';
 
-        // Fix for default export inconsistency in some ESM environments
+        // Fix for default export inconsistency
         const Cropper = CropperModule.default || CropperModule;
 
         // --- Canvas Utils (Inline) ---
@@ -112,11 +95,10 @@
             }
         }
 
-        async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
+        async function getCroppedImg(imageSrc, pixelCrop, rotation = 0, flip = { horizontal: false, vertical: false }) {
             const image = await createImage(imageSrc)
             const canvas = document.createElement('canvas')
             const ctx = canvas.getContext('2d')
-
             if (!ctx) return null
 
             const rotRad = getRadianAngle(rotation)
@@ -127,7 +109,9 @@
 
             ctx.translate(bBoxWidth / 2, bBoxHeight / 2)
             ctx.rotate(rotRad)
+            ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
             ctx.translate(-image.width / 2, -image.height / 2)
+
             ctx.drawImage(image, 0, 0)
 
             const data = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height)
@@ -142,6 +126,7 @@
             })
         }
 
+        // --- App Component ---
         const STEPS = [
             { id: 1, name: 'Upload', icon: Upload },
             { id: 2, name: 'Crop', icon: Scissors },
@@ -163,24 +148,24 @@
             const [bgRemovedImage, setBgRemovedImage] = useState(null);
             const [sheetImage, setSheetImage] = useState(null);
 
-            // Crop
+            // Crop State
             const [crop, setCrop] = useState({ x: 0, y: 0 });
             const [zoom, setZoom] = useState(1);
             const [rotation, setRotation] = useState(0);
             const [aspect, setAspect] = useState(35 / 45); // Standard passport
             const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-            // Enhance
-            const [brightness, setBrightness] = useState(100);
+            // Enhance State
+            const [brightness, setBrightness] = useState(100); // 100% is default
             const [contrast, setContrast] = useState(100);
             const [saturation, setSaturation] = useState(100);
 
-            // Background
+            // Background State
             const [bgColor, setBgColor] = useState('#ffffff');
             const [isPaid, setIsPaid] = useState(false);
             const [showPaymentModal, setShowPaymentModal] = useState(false);
-            const [pendingAction, setPendingAction] = useState(null); // 'print' or 'download'
-            const [selectedPlan, setSelectedPlan] = useState('single'); // 'single' (699) or 'pro' (1999)
+            const [pendingAction, setPendingAction] = useState(null);
+            const [selectedPlan, setSelectedPlan] = useState('single');
 
             // Camera State
             const [showCamera, setShowCamera] = useState(false);
@@ -194,6 +179,8 @@
             const [authEmail, setAuthEmail] = useState('');
             const [authPass, setAuthPass] = useState('');
             const [showUserMenu, setShowUserMenu] = useState(false);
+
+            // --- Handlers ---
 
             // Init Check
             useEffect(() => {
@@ -308,18 +295,13 @@
                 }
             }, [showCamera, stream]);
 
-            const onFileChange = (e) => {
-                console.log("File changed");
+            const onFileChange = async (e) => {
                 if (e.target.files && e.target.files.length > 0) {
                     const file = e.target.files[0];
-                    console.log("File selected:", file.name);
                     try {
                         const url = URL.createObjectURL(file);
-                        console.log("Blob URL created:", url);
                         setOriginalImage(url);
-                        // Reset payment status for new image
                         setIsPaid(false);
-                        // If Pro, re-validate to grant access immediately
                         if (user) {
                             checkSubscription(user);
                         }
@@ -340,19 +322,21 @@
                     setLoading(true);
                     const cropped = await getCroppedImg(originalImage, croppedAreaPixels, rotation);
                     setCroppedImage(cropped);
-                    setEnhancedImage(cropped);
+                    setEnhancedImage(cropped); // Default enhanced is just cropped
                     setStep(3);
                 } catch (e) {
                     console.error(e);
-                    alert('Crop failed');
+                    alert('Failed to crop image');
                 } finally {
                     setLoading(false);
                 }
             };
 
             const applyEnhancements = async () => {
+                // Apply CSS filters to a canvas to burn them in
                 if (!croppedImage) return;
                 setLoading(true);
+
                 try {
                     const img = new Image();
                     img.src = croppedImage;
@@ -363,6 +347,7 @@
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
 
+                    // Apply filters
                     ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
                     ctx.drawImage(img, 0, 0);
 
@@ -380,18 +365,19 @@
             const handleRemoveBackground = async () => {
                 if (!enhancedImage) return;
                 setLoading(true);
-                setLoadingMsg('Downloading AI models (40MB+)...');
+                setLoadingMsg('0%');
 
                 try {
-                    // Use default config (should work best with require-corp)
+                    // 1. Remove BG -> Returns Blob (PNG with transparency)
                     const blob = await removeBackground(enhancedImage, {
                         progress: (key, current, total) => {
-                            setLoadingMsg(`Downloading AI Model (${key}): ${Math.round(current / total * 100)}%`);
-                        },
-                        debug: true
+                            const percent = Math.round((current / total) * 100);
+                            setLoadingMsg(`${percent}%`);
+                        }
                     });
                     const transparentUrl = URL.createObjectURL(blob);
 
+                    // 2. Composite over bgColor
                     const img = new Image();
                     img.src = transparentUrl;
                     await new Promise(r => img.onload = r);
@@ -401,15 +387,17 @@
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
 
+                    // Fill BG
                     ctx.fillStyle = bgColor;
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    // Draw Person
                     ctx.drawImage(img, 0, 0);
 
                     setBgRemovedImage(canvas.toDataURL('image/jpeg', 0.95));
                     setStep(5);
                 } catch (e) {
-                    console.error("BG Removal Error Details:", e);
-                    alert('BG Removal failed: ' + (e.message || e));
+                    console.error(e);
+                    alert('Background removal failed: ' + e.message);
                 } finally {
                     setLoading(false);
                     setLoadingMsg('');
@@ -417,10 +405,13 @@
             };
 
             const generateSheet = async () => {
-                const sourceImage = bgRemovedImage || enhancedImage;
+                const sourceImage = bgRemovedImage || enhancedImage || croppedImage;
                 if (!sourceImage) return;
                 setLoading(true);
+
                 try {
+                    // A4 or 4x6 inch canvas at 300 DPI
+                    // 4x6" = 1200x1800 px
                     const dpi = 300;
                     const width = 6 * dpi;
                     const height = 4 * dpi;
@@ -430,6 +421,7 @@
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
 
+                    // White Sheet
                     ctx.fillStyle = 'white';
                     ctx.fillRect(0, 0, width, height);
 
@@ -437,11 +429,12 @@
                     img.src = sourceImage;
                     await new Promise(r => img.onload = r);
 
+                    // Grid 4x2
                     const cols = 4;
                     const rows = 2;
-                    const photoWidth = 413;
-                    const photoHeight = 531;
-                    const gap = 30;
+                    const photoWidth = 413; // 35mm at 300dpi
+                    const photoHeight = 531; // 45mm at 300dpi
+                    const gap = 30; // padding
 
                     const startX = (width - ((cols * photoWidth) + ((cols - 1) * gap))) / 2;
                     const startY = (height - ((rows * photoHeight) + ((rows - 1) * gap))) / 2;
@@ -497,17 +490,14 @@
 
                 const isPro = selectedPlan === 'pro';
                 const options = {
-                    "key": "rzp_test_Rvj7jfCCdtvpMu", // YOUR_RAZORPAY_KEY_ID
-                    "amount": isPro ? "199900" : "69900", // 1999 INR vs 699 INR
+                    "key": "rzp_test_Rvj7jfCCdtvpMu",
+                    "amount": isPro ? "199900" : "69900",
                     "currency": "INR",
                     "name": "Passport Studio",
                     "description": isPro ? "Pro Subscription (Monthly)" : "Single Sheet Download",
-                    "image": "https://example.com/your_logo", // Optional
+                    "image": "https://example.com/your_logo",
                     "handler": function (response) {
-                        // Payment Success Handler
                         console.log("Payment Success:", response);
-
-
                         if (selectedPlan === 'pro') {
                             const expiry = new Date().getTime() + (30 * 24 * 60 * 60 * 1000); // 30 Days
                             const updatedUser = user ? { ...user, role: 'pro', expiry } : { email: 'guest', role: 'pro', expiry };
@@ -518,14 +508,12 @@
                         setLoading(true);
                         setLoadingMsg('Verifying Payment...');
 
-                        // Simulate verification delay (in real app, verify signature on backend)
                         setTimeout(() => {
                             setIsPaid(true);
                             setShowPaymentModal(false);
                             setLoading(false);
                             setLoadingMsg('');
 
-                            // Execute pending action
                             if (pendingAction === 'print') {
                                 setTimeout(() => doPrint(), 500);
                             } else if (pendingAction === 'download') {
@@ -542,9 +530,7 @@
                         "email": "user@example.com",
                         "contact": "9999999999"
                     },
-                    "theme": {
-                        "color": "#4f46e5" // Indigo-600 to match theme
-                    },
+                    "theme": { "color": "#4f46e5" },
                     "modal": {
                         "ondismiss": function () {
                             setLoading(false);
@@ -553,7 +539,6 @@
                     }
                 };
 
-                // Initialize Razorpay
                 try {
                     const rzp1 = new window.Razorpay(options);
                     rzp1.on('payment.failed', function (response) {
@@ -605,19 +590,53 @@
                 }
             };
 
-            // Ensure we have an image source for BG removal even if we skipped Enhance
-            const imageForBg = enhancedImage || croppedImage;
-            const imageForSheet = bgRemovedImage || enhancedImage || croppedImage;
-
             return (
-                <div className="flex min-h-screen text-slate-100">
+                <div className="flex flex-col md:flex-row h-screen overflow-hidden text-slate-100 font-sans bg-slate-950">
+                    {/* Mobile Header */}
+                    <header className="flex md:hidden justify-between items-center p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-20">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-indigo-600 p-2 rounded">
+                                <ImageIcon size={24} />
+                            </div>
+                            <h1 className="text-xl font-bold">Passport Studio</h1>
+                        </div>
+                        {/* Mobile User Menu Trigger */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                            >
+                                <div className="bg-indigo-500 rounded-full p-1">
+                                    <User size={20} />
+                                </div>
+                            </button>
+                            {/* Simplified Mobile Dropdown */}
+                            {showUserMenu && (
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50">
+                                    {user ? (
+                                        <div className="py-1">
+                                            <div className="px-4 py-3 border-b border-slate-700">
+                                                <p className="text-sm text-white truncate">{user.email}</p>
+                                            </div>
+                                            <button onClick={() => { handleLogout(); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"><LogOut size={16} /> Logout</button>
+                                        </div>
+                                    ) : (
+                                        <div className="py-1">
+                                            <button onClick={() => { setAuthMode('login'); setShowAuthModal(true); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-indigo-400 hover:bg-slate-700 flex items-center gap-2"><User size={16} /> Login</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </header>
+
                     {/* Sidebar */}
-                    <aside className="w-72 bg-slate-900 border-r border-slate-700 p-6 flex-shrink-0">
-                        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-8">
+                    <aside className="w-full md:w-72 bg-slate-900 border-b md:border-r border-slate-800 md:border-slate-700 p-4 md:p-6 flex-shrink-0 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible no-scrollbar">
+                        <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-0 md:mb-8 whitespace-nowrap hidden md:block">
                             Passport Studio
                         </h1>
 
-                        <div className="space-y-2">
+                        <div className="flex flex-row md:flex-col gap-2 min-w-max md:min-w-0">
                             {STEPS.map((s) => {
                                 const Icon = s.icon;
                                 const active = step === s.id;
@@ -626,15 +645,15 @@
                                     <button key={s.id}
                                         onClick={() => handleStepClick(s.id)}
                                         disabled={!avail}
-                                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${active ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30' :
+                                        className={`flex items-center gap-3 p-2 md:p-3 rounded-lg transition-all text-left whitespace-nowrap ${active ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30' :
                                             avail ? 'text-slate-300 hover:bg-slate-800 cursor-pointer' : 'text-slate-600 cursor-not-allowed opacity-50'
                                             }`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border ${active ? 'border-indigo-500 bg-indigo-500 text-white' :
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border flex-shrink-0 ${active ? 'border-indigo-500 bg-indigo-500 text-white' :
                                             avail ? 'border-slate-500 bg-slate-700' : 'border-slate-700 bg-slate-800'
                                             }`}>
                                             {s.id}
                                         </div>
-                                        <span className="font-medium">{s.name}</span>
+                                        <span className="font-medium text-sm md:text-base">{s.name}</span>
                                     </button>
                                 )
                             })}
@@ -643,8 +662,8 @@
 
                     {/* Main Section Wrapper */}
                     <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                        {/* Header */}
-                        <header className="flex justify-between items-center p-6 border-b border-slate-700 bg-slate-800 flex-shrink-0 relative">
+                        {/* Header (Desktop) */}
+                        <header className="hidden md:flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
                             <div className="flex items-center gap-2">
                                 <div className="bg-indigo-600 p-2 rounded">
                                     <ImageIcon size={24} />
@@ -706,17 +725,17 @@
                         </header>
 
                         {/* Main Content */}
-                        <main className="flex-1 p-8 overflow-y-auto bg-slate-900 relative">
+                        <main className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-950 relative w-full">
                             {loading && (
                                 <div className="fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-                                    <div className="custom-loader mb-4 border-indigo-500"></div>
-                                    <p className="text-xl font-medium">{loadingMsg || 'Processing...'}</p>
+                                    <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mb-4" />
+                                    <p className="text-2xl font-bold text-white">{loadingMsg || 'Processing...'}</p>
                                 </div>
                             )}
 
                             {/* Auth Modal */}
                             {showAuthModal && (
-                                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
                                     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
                                         <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
                                         <h3 className="text-2xl font-bold mb-6 text-center">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h3>
@@ -740,6 +759,63 @@
                                             <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-indigo-400 hover:underline">
                                                 {authMode === 'login' ? 'Sign Up' : 'Login'}
                                             </button>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Payment Modal */}
+                            {showPaymentModal && (
+                                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-2xl w-full shadow-2xl relative">
+                                        <button onClick={() => setShowPaymentModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
+                                        <h2 className="text-3xl font-bold mb-8 text-center">Select a Plan</h2>
+
+                                        <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                            {/* Plan 1: Single */}
+                                            <div
+                                                onClick={() => setSelectedPlan('single')}
+                                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'single' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                                            >
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="font-bold text-lg">Single Sheet</span>
+                                                    <span className="text-xl font-bold">₹699</span>
+                                                </div>
+                                                <p className="text-slate-400 text-sm text-left">One-time processing & download</p>
+                                            </div>
+
+                                            {/* Plan 2: Pro */}
+                                            <div
+                                                onClick={() => setSelectedPlan('pro')}
+                                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${selectedPlan === 'pro' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                                            >
+                                                <div className="absolute -top-3 right-4 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
+                                                    BEST VALUE
+                                                </div>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="font-bold text-lg">Pro Subscription</span>
+                                                    <span className="text-xl font-bold">₹1999</span>
+                                                </div>
+                                                <p className="text-slate-400 text-sm text-left">Unlimited downloads for 1 month</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                if (selectedPlan === 'pro' && !user) {
+                                                    setAuthMode('signup');
+                                                    setShowAuthModal(true);
+                                                } else {
+                                                    completePayment();
+                                                }
+                                            }}
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
+                                        >
+                                            {selectedPlan === 'pro' ? 'Subscribe for ₹1999' : 'Pay ₹699 Now'}
+                                        </button>
+
+                                        <p className="text-center text-xs text-slate-500 mt-4">
+                                            Secure payment powered by Razorpay
                                         </p>
                                     </div>
                                 </div>
@@ -800,158 +876,219 @@
                                                 onCropComplete={onCropComplete}
                                                 onZoomChange={setZoom}
                                                 rotation={rotation}
+                                                objectFit="contain"
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-8">
-                                            <div>Zoom: <input type="range" className="w-full" min={1} max={3} step={0.1} value={zoom} onChange={e => setZoom(Number(e.target.value))} /></div>
-                                            <div>Rotation: <input type="range" className="w-full" min={0} max={360} value={rotation} onChange={e => setRotation(Number(e.target.value))} /></div>
+
+                                        <div className="flex items-center gap-8 mb-6">
+                                            <div className="flex-1">
+                                                <label className="block text-sm text-slate-400 mb-2">Zoom</label>
+                                                <input
+                                                    type="range" min={1} max={3} step={0.1}
+                                                    value={zoom} onChange={(e) => setZoom(Number(e.target.value))}
+                                                    className="w-full accent-indigo-600"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm text-slate-400 mb-2">Rotation</label>
+                                                <input
+                                                    type="range" min={0} max={360}
+                                                    value={rotation} onChange={(e) => setRotation(Number(e.target.value))}
+                                                    className="w-full accent-indigo-600"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
                                 {step === 3 && croppedImage && (
-                                    <div className="max-w-md mx-auto text-center">
-                                        <h2 className="text-2xl font-bold mb-6">Enhance</h2>
-                                        <img src={croppedImage}
-                                            style={{ filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)` }}
-                                            className="rounded shadow-lg mb-6 max-h-64 mx-auto" />
+                                    <div className="card flex flex-col items-center">
+                                        <h2 className="text-2xl font-bold mb-8">Enhance Photo</h2>
 
-                                        <div className="space-y-4 mb-8 text-left">
-                                            <div>Brightness <input type="range" className="w-full" min="50" max="150" value={brightness} onChange={e => setBrightness(e.target.value)} /></div>
-                                            <div>Contrast <input type="range" className="w-full" min="50" max="150" value={contrast} onChange={e => setContrast(e.target.value)} /></div>
-                                            <div>Saturation <input type="range" className="w-full" min="0" max="200" value={saturation} onChange={e => setSaturation(e.target.value)} /></div>
-                                        </div>
-                                        <div className="flex gap-2 justify-center">
-                                            <button className="bg-indigo-600 px-8 py-3 rounded font-bold hover:bg-indigo-700" onClick={applyEnhancements}>Apply Changes</button>
-                                            <button className="bg-slate-700 px-8 py-3 rounded font-bold hover:bg-slate-600" onClick={() => setStep(4)}>Skip &gt;&gt;</button>
-                                        </div>
-                                    </div>
-                                )}
+                                        <div className="grid grid-cols-2 gap-8 w-full mb-8">
+                                            <div className="bg-slate-950 p-4 rounded-lg flex items-center justify-center border border-slate-800">
+                                                <img
+                                                    src={croppedImage}
+                                                    style={{
+                                                        filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+                                                        maxHeight: '400px'
+                                                    }}
+                                                    className="shadow-xl"
+                                                />
+                                            </div>
 
-                                {step === 4 && imageForBg && (
-                                    <div className="text-center">
-                                        <h2 className="text-2xl font-bold mb-6">Background</h2>
-                                        <img src={imageForBg} className="max-h-64 mx-auto rounded mb-6" />
-                                        <div className="flex justify-center items-center gap-4 mb-6">
-                                            Back Color: <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)} />
+                                            <div className="space-y-6 self-center">
+                                                <div>
+                                                    <label className="flex justify-between text-sm mb-2">
+                                                        <span className="text-slate-400">Brightness</span>
+                                                        <span>{brightness}%</span>
+                                                    </label>
+                                                    <input
+                                                        type="range" min="50" max="150" value={brightness}
+                                                        onChange={e => setBrightness(e.target.value)}
+                                                        className="w-full accent-indigo-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="flex justify-between text-sm mb-2">
+                                                        <span className="text-slate-400">Contrast</span>
+                                                        <span>{contrast}%</span>
+                                                    </label>
+                                                    <input
+                                                        type="range" min="50" max="150" value={contrast}
+                                                        onChange={e => setContrast(e.target.value)}
+                                                        className="w-full accent-indigo-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="flex justify-between text-sm mb-2">
+                                                        <span className="text-slate-400">Saturation</span>
+                                                        <span>{saturation}%</span>
+                                                    </label>
+                                                    <input
+                                                        type="range" min="0" max="200" value={saturation}
+                                                        onChange={e => setSaturation(e.target.value)}
+                                                        className="w-full accent-indigo-500"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <button className="bg-indigo-600 px-8 py-3 rounded font-bold flex items-center gap-2 mx-auto" onClick={handleRemoveBackground}>
-                                            <Wand2 size={20} /> Remove Background
+
+                                        <button className="btn-primary w-full max-w-md" onClick={applyEnhancements}>
+                                            Apply Enhancements
                                         </button>
                                     </div>
                                 )}
 
-                                {step === 5 && imageForSheet && (
-                                    <div className="text-center">
-                                        <h2 className="text-2xl font-bold mb-6">Preview Sheet</h2>
-                                        <p className="text-slate-400 mb-4">Using: {bgRemovedImage ? "Background Removed" : "Original/Enhanced"} Image</p>
-                                        <img src={imageForSheet} className="max-h-64 mx-auto rounded mb-6" />
-                                        <button className="bg-indigo-600 px-8 py-3 rounded font-bold" onClick={generateSheet}>Generate 4x6 Sheet</button>
+                                {step === 4 && enhancedImage && (
+                                    <div className="card flex flex-col items-center">
+                                        <h2 className="text-2xl font-bold mb-6">Background Removal</h2>
+
+                                        <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 mb-8">
+                                            <div className="relative">
+                                                {/* We just show preview here, actual removal happens on click */}
+                                                <img src={enhancedImage} className="max-h-[400px] shadow-lg" />
+                                                <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded text-xs backdrop-blur-md">
+                                                    Current Image
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <label className="text-sm">New Background Color:</label>
+                                            <input
+                                                type="color"
+                                                value={bgColor}
+                                                onChange={e => setBgColor(e.target.value)}
+                                                className="h-10 w-20 rounded cursor-pointer bg-transparent border-0"
+                                            />
+                                        </div>
+
+                                        <button className="btn-primary w-full max-w-md flex items-center justify-center gap-2" onClick={handleRemoveBackground}>
+                                            <Wand2 size={20} />
+                                            <span>Remove Background & Apply Color</span>
+                                        </button>
+
                                     </div>
                                 )}
 
-                                {step === 6 && sheetImage && (
-                                    <div className="text-center relative">
-                                        <h2 className="text-2xl font-bold mb-6">Ready to Download</h2>
+                                {step === 5 && (bgRemovedImage || enhancedImage || croppedImage) && (
+                                    <div className="card flex flex-col items-center">
+                                        <h2 className="text-3xl font-bold mb-2">Preview Sheet</h2>
+                                        <p className="text-slate-400 mb-8">
+                                            Using: {bgRemovedImage ? 'Background Removed Image' : 'Original/Enhanced Image'}
+                                        </p>
 
-                                        <div className="relative inline-block mb-8">
-                                            <img src={sheetImage} className="max-w-full rounded shadow-xl border" />
-                                            {!isPaid && (
-                                                <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px] flex items-center justify-center rounded">
-                                                    <div className="bg-black/60 text-white px-4 py-2 rounded-full text-sm font-bold backdrop-blur-md">
-                                                        Preview Mode
-                                                    </div>
+                                        <div className="p-2 bg-white rounded-lg shadow-xl mb-8 relative overflow-hidden inline-block">
+                                            <img
+                                                src={bgRemovedImage || enhancedImage || croppedImage}
+                                                className="h-64 w-auto object-cover rounded"
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
+                                                <div className="transform -rotate-45 text-slate-500/30 text-2xl font-black whitespace-nowrap border-2 border-slate-500/30 p-2">
+                                                    PASSPORT STUDIO
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
 
-                                        <div className="flex justify-center gap-4">
-                                            <button className="bg-green-600 px-8 py-3 rounded font-bold flex gap-2 hover:bg-green-700" onClick={handlePrintClick}>
-                                                <Printer /> Print
-                                            </button>
-
-                                            <a
-                                                href={sheetImage}
-                                                download="passport.jpg"
-                                                onClick={handleDownloadClick}
-                                                className="bg-slate-700 px-8 py-3 rounded font-bold hover:bg-slate-600 flex items-center gap-2 cursor-pointer text-white no-underline"
+                                        <div className="w-full max-w-md space-y-3">
+                                            <button
+                                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors shadow-lg shadow-indigo-900/20"
+                                                onClick={generateSheet}
                                             >
-                                                <CreditCard size={20} /> {isPaid ? "Download" : "Download"}
-                                            </a>
+                                                Generate 4×6 Sheet
+                                            </button>
+                                            <button
+                                                className="w-full text-slate-400 hover:text-white text-sm py-2"
+                                                onClick={() => setStep(4)}
+                                            >
+                                                Go Back
+                                            </button>
                                         </div>
+                                    </div>
+                                )}
 
-                                        {/* Payment Modal */}
-                                        {showPaymentModal && (
-                                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                                                <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
-                                                    <button
-                                                        onClick={() => setShowPaymentModal(false)}
-                                                        className="absolute top-4 right-4 text-slate-400 hover:text-white"
-                                                    >
-                                                        ✕
-                                                    </button>
-
-                                                    <div className="text-center mb-6">
-                                                        <h3 className="text-2xl font-bold">Choose a Plan</h3>
-                                                        <p className="text-slate-400">Select the best option for you</p>
-                                                    </div>
-
-                                                    <div className="space-y-4 mb-6">
-                                                        {/* Plan 1: Single */}
-                                                        <div
-                                                            onClick={() => setSelectedPlan('single')}
-                                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'single' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
-                                                        >
-                                                            <div className="flex justify-between items-center mb-1">
-                                                                <span className="font-bold text-lg">Single Sheet</span>
-                                                                <span className="text-xl font-bold">₹699</span>
-                                                            </div>
-                                                            <p className="text-slate-400 text-sm text-left">One-time processing & download</p>
-                                                        </div>
-
-                                                        {/* Plan 2: Pro */}
-                                                        <div
-                                                            onClick={() => setSelectedPlan('pro')}
-                                                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${selectedPlan === 'pro' ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-600'}`}
-                                                        >
-                                                            <div className="absolute -top-3 right-4 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
-                                                                BEST VALUE
-                                                            </div>
-                                                            <div className="flex justify-between items-center mb-1">
-                                                                <span className="font-bold text-lg">Pro Subscription</span>
-                                                                <span className="text-xl font-bold">₹1999</span>
-                                                            </div>
-                                                            <p className="text-slate-400 text-sm text-left">Unlimited downloads for 1 month</p>
+                                {step === 6 && !isPaid && (
+                                    <div className="card text-center max-w-4xl mx-auto">
+                                        <h2 className="text-3xl font-bold mb-6">Review & Download</h2>
+                                        {sheetImage && (
+                                            <div className="relative mb-8 inline-block">
+                                                <div className="bg-white p-2 rounded-lg shadow-2xl relative overflow-hidden">
+                                                    <img
+                                                        src={sheetImage}
+                                                        className="max-h-[500px] w-auto block filter blur-sm transition-all duration-300"
+                                                    />
+                                                    {/* Preview Mode Badge */}
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <div className="bg-black/80 text-white px-6 py-2 rounded-full text-sm font-medium backdrop-blur-md border border-white/10 shadow-xl z-10">
+                                                            Preview Mode
                                                         </div>
                                                     </div>
-
-                                                    <button
-                                                        onClick={() => {
-                                                            if (selectedPlan === 'pro' && !user) {
-                                                                setAuthMode('signup');
-                                                                setShowAuthModal(true);
-                                                            } else {
-                                                                completePayment();
-                                                            }
-                                                        }}
-                                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
-                                                    >
-                                                        {selectedPlan === 'pro' ? 'Subscribe for ₹1999' : 'Pay ₹699 Now'}
-                                                    </button>
-
-                                                    <p className="text-center text-xs text-slate-500 mt-4">
-                                                        Secure payment powered by Razorpay
-                                                    </p>
                                                 </div>
                                             </div>
                                         )}
+
+                                        <div className="flex justify-center gap-4">
+                                            <button
+                                                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                                onClick={handlePrintClick}
+                                            >
+                                                <Printer size={20} /> Print
+                                            </button>
+                                            <button
+                                                className="bg-slate-700 hover:bg-slate-600 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                                onClick={handleDownloadClick}
+                                            >
+                                                <CreditCard size={20} /> Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {step === 6 && isPaid && (
+                                    <div className="card text-center">
+                                        <h2 className="text-3xl font-bold m-0 mb-2">Payment Successful!</h2>
+                                        <p className="text-green-400 mb-8">Your passport photo sheet is ready.</p>
+
+                                        <div className="inline-block p-4 bg-white rounded shadow-2xl mb-8 border border-slate-200">
+                                            <img src={sheetImage} className="max-h-[400px] w-auto block" />
+                                        </div>
+
+                                        <div className="flex justify-center gap-4">
+                                            <button className="btn-primary px-8 py-3 text-lg flex items-center gap-2" onClick={handlePrintClick}>
+                                                <Printer /> Print Sheet
+                                            </button>
+                                            <button onClick={handleDownloadClick} className="btn-secondary px-8 py-3 text-lg flex items-center gap-2">
+                                                Download
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
 
                             </div>
-                        </main>
-                    </div>
-                </div>
+                        </main >
+                    </div >
+                </div >
             );
         }
 
