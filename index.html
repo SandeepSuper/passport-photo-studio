@@ -3,17 +3,101 @@
 
 <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Passport Photo Studio</title>
+
+    <!-- Primary SEO -->
+    <title>Free Online Passport Photo Maker | Passport Studio</title>
+    <meta name="description" content="Create professional passport photos online in seconds. Upload, crop, enhance, remove background, and print a print-ready 4×6 sheet. Works for US, India, UK &amp; all countries." />
+    <meta name="keywords" content="passport photo maker, online passport photo, passport size photo editor, background removal, photo crop, 35x45mm photo, US passport photo" />
+    <meta name="author" content="Passport Studio" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://passportstudio.app/" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/vite.svg" />
+
+    <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://passportstudio.app/" />
+    <meta property="og:title" content="Free Online Passport Photo Maker | Passport Studio" />
+    <meta property="og:description" content="Make passport photos online in 60 seconds. Crop, enhance, remove background, and download a print-ready 4×6 sheet." />
+    <meta property="og:image" content="https://passportstudio.app/og-thumbnail.jpg" />
+    <meta property="og:site_name" content="Passport Studio" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Free Online Passport Photo Maker | Passport Studio" />
+    <meta name="twitter:description" content="Make passport photos online in 60 seconds. Crop, enhance &amp; print a professional sheet." />
+    <meta name="twitter:image" content="https://passportstudio.app/og-thumbnail.jpg" />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Passport Studio",
+      "url": "https://passportstudio.app/",
+      "description": "Free online passport photo maker. Upload a photo, crop to passport dimensions, remove background, and print or download a professional 4x6 sheet.",
+      "applicationCategory": "PhotoEditing",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Works in Chrome, Firefox, Safari, Edge.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Single Sheet",
+          "price": "6.99",
+          "priceCurrency": "USD",
+          "description": "One-time passport photo sheet download"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro Subscription",
+          "price": "19.99",
+          "priceCurrency": "USD",
+          "description": "Unlimited passport photo downloads for 1 month"
+        }
+      ],
+      "featureList": [
+        "Passport photo cropping",
+        "AI background removal",
+        "Photo enhancement (brightness, contrast, saturation)",
+        "Print-ready 4x6 sheet generation",
+        "Camera capture support"
+      ]
+    }
+    </script>
 </head>
 
 <body>
-    <div id="root"></div>
+    <!-- Static fallback content for search engine crawlers (replaced by React on load) -->
+    <div id="root">
+        <header style="background:#0f172a;padding:16px 24px;display:flex;align-items:center;gap:12px;">
+            <strong style="color:#818cf8;font-family:sans-serif;font-size:1.25rem;">📷 Passport Studio</strong>
+        </header>
+        <main style="background:#020617;color:#e2e8f0;font-family:sans-serif;padding:48px 24px;max-width:800px;margin:0 auto;">
+            <h1 style="font-size:2.5rem;font-weight:700;color:#ffffff;margin-bottom:16px;">Free Online Passport Photo Maker</h1>
+            <p style="font-size:1.125rem;color:#94a3b8;margin-bottom:32px;">
+                Create professional passport-size photos in under 60 seconds — entirely in your browser.
+                No sign-up required for basic use.
+            </p>
+            <h2 style="font-size:1.5rem;font-weight:600;color:#c7d2fe;margin-bottom:12px;">How It Works</h2>
+            <ol style="color:#94a3b8;line-height:2;font-size:1rem;">
+                <li>📤 <strong style="color:#e2e8f0;">Upload</strong> — Select a photo or take one with your camera</li>
+                <li>✂️ <strong style="color:#e2e8f0;">Crop</strong> — Precisely crop to standard passport dimensions (35×45mm)</li>
+                <li>✨ <strong style="color:#e2e8f0;">Enhance</strong> — Adjust brightness, contrast &amp; saturation</li>
+                <li>🎨 <strong style="color:#e2e8f0;">Background</strong> — Remove background with AI &amp; set a custom color</li>
+                <li>🖨️ <strong style="color:#e2e8f0;">Print</strong> — Generate a print-ready 4×6 inch sheet with 8 photos</li>
+            </ol>
+            <p style="margin-top:32px;color:#64748b;font-size:0.875rem;">Loading application...</p>
+        </main>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
 </body>
 
