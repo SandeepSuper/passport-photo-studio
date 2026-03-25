@@ -11,22 +11,22 @@ const API_URL = 'https://ihdzz1fxmg.execute-api.ap-south-1.amazonaws.com';
 // ====== PRICING CONFIGURATION ======
 // Note: Razorpay accepts amounts in paise (Multiply Rupees by 100)
 // Example: ₹49 = 4900, ₹99 = 9900
-const PRICE_SINGLE_DOWNLOAD = 6900; // Rs. 69
+const PRICE_SINGLE_DOWNLOAD = 1000; // Rs. 10
 const PRICE_PRO_SUBSCRIPTION = 19900; // Rs. 199
 // ===================================
 
 // Country-wise passport photo sizes (width x height in mm)
 const PHOTO_SIZES = [
-    { id: 'india',     flag: '🇮🇳', country: 'India',        w: 35,   h: 45,   label: '35×45mm' },
-    { id: 'usa',       flag: '🇺🇸', country: 'USA',          w: 50.8, h: 50.8, label: '2×2 inch' },
-    { id: 'uk',        flag: '🇬🇧', country: 'UK',           w: 35,   h: 45,   label: '35×45mm' },
-    { id: 'eu',        flag: '🇪🇺', country: 'EU / Schengen',w: 35,   h: 45,   label: '35×45mm' },
-    { id: 'china',     flag: '🇨🇳', country: 'China',        w: 33,   h: 48,   label: '33×48mm' },
-    { id: 'canada',    flag: '🇨🇦', country: 'Canada',       w: 50,   h: 70,   label: '50×70mm' },
-    { id: 'australia', flag: '🇦🇺', country: 'Australia',    w: 35,   h: 45,   label: '35×45mm' },
-    { id: 'uae',       flag: '🇦🇪', country: 'UAE',          w: 40,   h: 60,   label: '40×60mm' },
-    { id: 'ksa',       flag: '🇸🇦', country: 'Saudi Arabia', w: 40,   h: 60,   label: '40×60mm' },
-    { id: 'japan',     flag: '🇯🇵', country: 'Japan',        w: 35,   h: 45,   label: '35×45mm' },
+    { id: 'india', flag: '🇮🇳', country: 'India', w: 35, h: 45, label: '35×45mm' },
+    { id: 'usa', flag: '🇺🇸', country: 'USA', w: 50.8, h: 50.8, label: '2×2 inch' },
+    { id: 'uk', flag: '🇬🇧', country: 'UK', w: 35, h: 45, label: '35×45mm' },
+    { id: 'eu', flag: '🇪🇺', country: 'EU / Schengen', w: 35, h: 45, label: '35×45mm' },
+    { id: 'china', flag: '🇨🇳', country: 'China', w: 33, h: 48, label: '33×48mm' },
+    { id: 'canada', flag: '🇨🇦', country: 'Canada', w: 50, h: 70, label: '50×70mm' },
+    { id: 'australia', flag: '🇦🇺', country: 'Australia', w: 35, h: 45, label: '35×45mm' },
+    { id: 'uae', flag: '🇦🇪', country: 'UAE', w: 40, h: 60, label: '40×60mm' },
+    { id: 'ksa', flag: '🇸🇦', country: 'Saudi Arabia', w: 40, h: 60, label: '40×60mm' },
+    { id: 'japan', flag: '🇯🇵', country: 'Japan', w: 35, h: 45, label: '35×45mm' },
 ];
 
 const STEPS = [
@@ -378,7 +378,7 @@ function App() {
             // Use selected size dimensions at 300 DPI (1mm = 11.811px at 300dpi)
             const mmToPx = 300 / 25.4;
             const activeSize = PHOTO_SIZES.find(s => s.id === selectedSize) || PHOTO_SIZES[0];
-            const photoWidth  = Math.round(activeSize.w * mmToPx);
+            const photoWidth = Math.round(activeSize.w * mmToPx);
             const photoHeight = Math.round(activeSize.h * mmToPx);
             const gap = 30;
 
@@ -452,11 +452,11 @@ function App() {
 
             if (!getOrderRes.ok) throw new Error("Could not create order");
             const orderData = await getOrderRes.json();
-            
+
             if (!orderData.order_id || !orderData.key_id) {
                 throw new Error("Invalid response from server");
             }
-            
+
             setLoading(false);
 
             // 2. Open Razorpay Popup
@@ -497,7 +497,7 @@ function App() {
 
                             setIsPaid(true);
                             setShowPaymentModal(false);
-                            
+
                             if (pendingAction === 'print') {
                                 setTimeout(() => doPrint(), 500);
                             } else if (pendingAction === 'download' || pendingAction === 'download-single') {
@@ -820,7 +820,7 @@ function App() {
                                     >
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="font-bold text-lg">Single Sheet</span>
-                                            <span className="text-xl font-bold">₹699</span>
+                                            <span className="text-xl font-bold">₹{PRICE_SINGLE_DOWNLOAD / 100}</span>
                                         </div>
                                         <p className="text-slate-400 text-sm text-left">One-time processing & download</p>
                                     </div>
@@ -835,7 +835,7 @@ function App() {
                                         </div>
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="font-bold text-lg">Pro Subscription</span>
-                                            <span className="text-xl font-bold">₹1999</span>
+                                            <span className="text-xl font-bold">₹{PRICE_PRO_SUBSCRIPTION / 100}</span>
                                         </div>
                                         <p className="text-slate-400 text-sm text-left">Unlimited downloads for 1 month</p>
                                     </div>
@@ -852,7 +852,7 @@ function App() {
                                     }}
                                     className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
                                 >
-                                    {selectedPlan === 'pro' ? 'Subscribe for ₹1999' : 'Pay ₹699 Now'}
+                                    {selectedPlan === 'pro' ? `Subscribe for ₹${PRICE_PRO_SUBSCRIPTION / 100}` : `Pay ₹${PRICE_SINGLE_DOWNLOAD / 100} Now`}
                                 </button>
 
                                 <p className="text-center text-xs text-slate-500 mt-4">
@@ -909,11 +909,10 @@ function App() {
                                             <button
                                                 key={size.id}
                                                 onClick={() => setSelectedSize(size.id)}
-                                                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border text-xs transition-all ${
-                                                    selectedSize === size.id
+                                                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border text-xs transition-all ${selectedSize === size.id
                                                         ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
                                                         : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-500'
-                                                }`}
+                                                    }`}
                                             >
                                                 <span className="text-xl mb-1">{size.flag}</span>
                                                 <span className="font-medium text-white whitespace-nowrap">{size.country}</span>
@@ -1086,7 +1085,7 @@ function App() {
                                     >
                                         Generate 4×6 Sheet
                                     </button>
-                                    
+
                                     <div className="flex gap-2">
                                         <button
                                             className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors border border-slate-700 hover:border-slate-500 flex items-center justify-center gap-2"
