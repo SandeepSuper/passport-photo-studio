@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { removeBackground, preload } from '@imgly/background-removal';
-import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download } from 'lucide-react';
+import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture } from 'lucide-react';
 import getCroppedImg from './canvasUtils';
 import './index.css';
 
@@ -641,11 +641,19 @@ function App() {
         <div className="flex flex-col md:flex-row h-screen overflow-hidden text-slate-100 font-sans bg-slate-950">
             {/* Mobile Header */}
             <header className="flex md:hidden justify-between items-center p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-20">
-                <div className="flex items-center gap-2">
-                    <div className="bg-indigo-600 p-2 rounded">
-                        <ImageIcon size={24} />
+                <div className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
+                    <div className="relative">
+                        <div className="bg-indigo-600/20 p-2 rounded-xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                            <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-700" size={24} />
+                        </div>
                     </div>
-                    <span className="text-xl font-bold">Passport Studio</span>
+                    <div className="flex flex-col leading-none">
+                        <div className="flex items-center gap-1">
+                            <span className="text-xl font-black tracking-tight text-white italic">photo</span>
+                            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">passport.in</span>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold ml-0.5">Premium Studio</span>
+                    </div>
                 </div>
                 {/* Mobile User Menu Trigger */}
                 <div className="relative">
@@ -679,8 +687,23 @@ function App() {
 
             {/* Sidebar */}
             <aside className="w-full md:w-72 bg-slate-900 border-b md:border-r border-slate-800 md:border-slate-700 p-4 md:p-6 flex-shrink-0 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible no-scrollbar">
-                <div className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 mb-0 md:mb-8 whitespace-nowrap hidden md:block" aria-label="Passport Studio navigation">
-                    Passport Studio
+                <div className="mb-0 md:mb-12 hidden md:flex items-center gap-3 px-2 group cursor-pointer" aria-label="photopassport.in home">
+                    <div className="relative">
+                        <div className="bg-indigo-600/20 p-3 rounded-2xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+                            <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-1000" size={32} />
+                        </div>
+                    </div>
+                    <div className="flex flex-col leading-none">
+                        <div className="flex items-center gap-1">
+                            <span className="text-2xl font-black tracking-tighter text-white italic">photo</span>
+                            <span className="text-2xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">passport</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[12px] uppercase tracking-[0.3em] text-slate-500 font-black">.in</span>
+                            <span className="h-px w-8 bg-slate-800"></span>
+                            <span className="text-[9px] px-1.5 py-0.5 border border-indigo-500/30 text-indigo-400 rounded-md font-bold">V 2.0</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-row md:flex-col gap-2 min-w-max md:min-w-0">
@@ -711,11 +734,16 @@ function App() {
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* Header (Desktop) */}
                 <header className="hidden md:flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-indigo-600 p-2 rounded">
-                            <ImageIcon size={24} />
+                    <div className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
+                        <div className="bg-indigo-600/20 p-2 rounded-xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors">
+                            <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-700" size={24} />
                         </div>
-                        <span className="text-xl font-bold">Passport Studio</span>
+                        <div className="flex flex-col leading-none">
+                            <div className="flex items-center gap-1">
+                                <span className="text-xl font-black tracking-tight text-white italic">photo</span>
+                                <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">passport.in</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* User Menu Trigger */}
