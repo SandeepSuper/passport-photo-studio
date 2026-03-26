@@ -203,7 +203,7 @@ function App() {
             // Silently preload ONNX model in background — makes next step instant
             preload({
                 model: 'isnet_quint8',
-                // Removed device: 'gpu' to prevent crashing/blank renders on mobile browsers
+                device: 'gpu',
             }).catch(() => {
                 // Fallback silently — preload failure is non-critical
             });
@@ -304,20 +304,22 @@ function App() {
         }, 300);
 
         try {
+            // Detect mobile/tablet: these don't support WebAssembly multi-threading
+            // Using gpu+isnet_quint8 on mobile causes INVERTED mask (removes person not bg)
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
             // 1. Remove BG -> Returns Blob (PNG with transparency)
             const blob = await removeBackground(enhancedImage, {
-                model: 'isnet_quint8',
-                // Removed device: 'gpu' - auto-fallback ensures the person doesn't vanish on mobile
+                // On mobile: use isnet_fp16 with cpu to avoid WebAssembly threading issues
+                // On desktop: use fast quantized model with GPU acceleration
+                model: isMobile ? 'isnet_fp16' : 'isnet_quint8',
+                device: isMobile ? 'cpu' : 'gpu',
                 progress: (key, current, total) => {
                     // If library does report real download progress, use it (overrides simulation)
                     if (total > 0) {
                         const percent = 5 + Math.round((current / total) * 85);
-                        const newProgress = Math.min(percent, 90);
-                        // Only update if it moves forward (fixes stuck at 5% issue on mobile CPU computing)
-                        if (newProgress > currentProgress) {
-                            setBgProgress(newProgress);
-                            currentProgress = newProgress;
-                        }
+                        setBgProgress(Math.min(percent, 90));
+                        currentProgress = Math.min(percent, 90);
                     }
                 }
             });
