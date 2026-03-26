@@ -203,7 +203,7 @@ function App() {
             // Silently preload ONNX model in background — makes next step instant
             preload({
                 model: 'isnet_quint8',
-                device: 'gpu',
+                // Removed device: 'gpu' to prevent crashing/blank renders on mobile browsers
             }).catch(() => {
                 // Fallback silently — preload failure is non-critical
             });
@@ -307,7 +307,7 @@ function App() {
             // 1. Remove BG -> Returns Blob (PNG with transparency)
             const blob = await removeBackground(enhancedImage, {
                 model: 'isnet_quint8',
-                device: 'gpu',
+                // Removed device: 'gpu' - auto-fallback ensures the person doesn't vanish on mobile
                 progress: (key, current, total) => {
                     // If library does report real download progress, use it (overrides simulation)
                     if (total > 0) {
