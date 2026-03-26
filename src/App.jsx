@@ -312,8 +312,12 @@ function App() {
                     // If library does report real download progress, use it (overrides simulation)
                     if (total > 0) {
                         const percent = 5 + Math.round((current / total) * 85);
-                        setBgProgress(Math.min(percent, 90));
-                        currentProgress = Math.min(percent, 90);
+                        const newProgress = Math.min(percent, 90);
+                        // Only update if it moves forward (fixes stuck at 5% issue on mobile CPU computing)
+                        if (newProgress > currentProgress) {
+                            setBgProgress(newProgress);
+                            currentProgress = newProgress;
+                        }
                     }
                 }
             });
