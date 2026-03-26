@@ -315,11 +315,16 @@ function App() {
                 model: isMobile ? 'isnet_fp16' : 'isnet_quint8',
                 device: isMobile ? 'cpu' : 'gpu',
                 progress: (key, current, total) => {
-                    // If library does report real download progress, use it (overrides simulation)
+                    // Library fires progress for each file download separately (model, wasm etc.)
+                    // Each new file resets current=0, which was causing progress to go backwards.
+                    // Fix: only update if new calculated value is HIGHER than current.
                     if (total > 0) {
                         const percent = 5 + Math.round((current / total) * 85);
-                        setBgProgress(Math.min(percent, 90));
-                        currentProgress = Math.min(percent, 90);
+                        const newVal = Math.min(percent, 90);
+                        if (newVal > currentProgress) {
+                            setBgProgress(newVal);
+                            currentProgress = newVal;
+                        }
                     }
                 }
             });
