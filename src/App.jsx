@@ -1107,6 +1107,7 @@ function App() {
                                         onCropComplete={onCropComplete}
                                         onZoomChange={setZoom}
                                         rotation={rotation}
+                                        onRotationChange={setRotation}
                                         objectFit="contain"
                                     />
                                 </div>
