@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { removeBackground, preload } from '@imgly/background-removal';
-import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture } from 'lucide-react';
+import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture, Sun, Moon, Palette } from 'lucide-react';
 import getCroppedImg from './canvasUtils';
 import './index.css';
 import { auth, db, googleProvider } from './firebase';
@@ -41,8 +41,17 @@ const STEPS = [
     { id: 6, name: 'Download', icon: Printer },
 ];
 
-function App() {
+const CROP_ASPECTS = [
+    { label: '3.5 x 4.5 cm', value: 3.5 / 4.5 },
+    { label: '2 x 2 inch', value: 1 },
+    { label: '4 x 6 cm', value: 4 / 6 }
+];
+
+const THEME_HUES = { indigo: 0, emerald: -120, rose: 90, amber: 155 };
+
+function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
     const [step, setStep] = useState(1);
+    const [showThemeMenu, setShowThemeMenu] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingMsg, setLoadingMsg] = useState('');
     const [bgProgress, setBgProgress] = useState(0); // 0-100 for background removal
@@ -747,8 +756,8 @@ function App() {
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden text-slate-100 font-sans bg-slate-950">
             {/* Mobile Header */}
-            <header className="flex md:hidden justify-between items-center p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-20">
-                <div className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
+            <header className="flex md:hidden justify-between items-center p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-50">
+                <div onClick={onHome} className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
                     <div className="relative">
                         <div className="bg-indigo-600/20 p-2 rounded-xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors shadow-[0_0_15px_rgba(99,102,241,0.2)]">
                             <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-700" size={24} />
@@ -762,16 +771,42 @@ function App() {
                         <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold ml-0.5">Premium Studio</span>
                     </div>
                 </div>
-                {/* Mobile User Menu Trigger */}
-                <div className="relative">
-                    <button
-                        onClick={() => setShowUserMenu(!showUserMenu)}
-                        className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
-                    >
-                        <div className="bg-indigo-500 rounded-full p-1">
-                            <User size={20} />
-                        </div>
+                {/* Mobile User Menu & Theme Trigger */}
+                <div className="flex items-center gap-3">
+                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-800 text-slate-300 border border-slate-700/50">
+                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
+                    <div className="relative">
+                        <button onClick={() => setShowThemeMenu(!showThemeMenu)} className="p-2 rounded-full hover:bg-slate-800 text-slate-300 border border-slate-700/50">
+                            <Palette size={20} />
+                        </button>
+                        {showThemeMenu && (
+                            <div className="absolute right-0 top-full mt-2 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 py-1">
+                                {[{ id: 'indigo', color: 'bg-[#6366f1]' },{ id: 'emerald', color: 'bg-[#10b981]' },{ id: 'rose', color: 'bg-[#f43f5e]' },{ id: 'amber', color: 'bg-[#f59e0b]' }].map(t => (
+                                    <button 
+                                        key={t.id}
+                                        onClick={() => { setThemeColor(t.id); setShowThemeMenu(false); }}
+                                        className={`w-full text-left px-4 py-3 text-sm flex items-center gap-3 capitalize transition-colors ${themeColor === t.id ? 'bg-slate-700 text-white font-medium' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'}`}
+                                    >
+                                        <div 
+                                            className={`w-3.5 h-3.5 rounded-full ${t.color} ${themeColor === t.id ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-700' : ''}`} 
+                                            style={{ filter: theme === 'light' ? `invert(1) hue-rotate(${180 - THEME_HUES[themeColor]}deg)` : `hue-rotate(${-THEME_HUES[themeColor]}deg)` }}
+                                        />
+                                        {t.id}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                        >
+                            <div className="bg-indigo-500 rounded-full p-1">
+                                <User size={20} />
+                            </div>
+                        </button>
                     {/* Simplified Mobile Dropdown */}
                     {showUserMenu && (
                         <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50">
@@ -789,26 +824,16 @@ function App() {
                             )}
                         </div>
                     )}
+                    </div>
                 </div>
             </header>
 
             {/* Sidebar */}
             <aside className="w-full md:w-72 bg-slate-900 border-b md:border-r border-slate-800 md:border-slate-700 p-4 md:p-6 flex-shrink-0 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-visible no-scrollbar">
-                <div className="mb-0 md:mb-12 hidden md:flex items-center gap-3 px-2 group cursor-pointer" aria-label="photopassport.in home">
+                <div onClick={onHome} className="mb-0 md:mb-12 hidden md:flex items-center gap-3 px-2 group cursor-pointer" aria-label="photopassport.in home">
                     <div className="relative">
                         <div className="bg-indigo-600/20 p-3 rounded-2xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors shadow-[0_0_20px_rgba(99,102,241,0.2)]">
                             <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-1000" size={32} />
-                        </div>
-                    </div>
-                    <div className="flex flex-col leading-none">
-                        <div className="flex items-center gap-1">
-                            <span className="text-2xl font-black tracking-tighter text-white italic">photo</span>
-                            <span className="text-2xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">passport</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[12px] uppercase tracking-[0.3em] text-slate-500 font-black">.in</span>
-                            <span className="h-px w-8 bg-slate-800"></span>
-                            <span className="text-[9px] px-1.5 py-0.5 border border-indigo-500/30 text-indigo-400 rounded-md font-bold">V 2.0</span>
                         </div>
                     </div>
                 </div>
@@ -840,8 +865,8 @@ function App() {
             {/* Main Section Wrapper */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* Header (Desktop) */}
-                <header className="hidden md:flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative">
-                    <div className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
+                <header className="hidden md:flex justify-between items-center p-4 md:p-6 border-b border-slate-800 bg-slate-900 flex-shrink-0 relative z-50">
+                    <div onClick={onHome} className="flex items-center gap-2 group cursor-pointer" aria-label="photopassport.in home">
                         <div className="bg-indigo-600/20 p-2 rounded-xl border border-indigo-500/30 group-hover:border-indigo-500/60 transition-colors">
                             <Aperture className="text-indigo-400 group-hover:rotate-180 transition-transform duration-700" size={24} />
                         </div>
@@ -853,17 +878,43 @@ function App() {
                         </div>
                     </div>
 
-                    {/* User Menu Trigger */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowUserMenu(!showUserMenu)}
-                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
-                        >
-                            <div className="bg-indigo-500 rounded-full p-1">
-                                <User size={20} />
-                            </div>
-                            {user && <span className="text-sm font-medium pr-2">{user.email.split('@')[0]}</span>}
+                    {/* User Menu & Theme Trigger */}
+                    <div className="flex items-center gap-4">
+                        <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-slate-800 text-slate-300 border border-slate-700">
+                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
+                        <div className="relative">
+                            <button onClick={() => setShowThemeMenu(!showThemeMenu)} className="p-2 rounded-full hover:bg-slate-800 text-slate-300 border border-slate-700">
+                                <Palette size={20} />
+                            </button>
+                            {showThemeMenu && (
+                                <div className="absolute right-0 top-full mt-2 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 py-1">
+                                    {[{ id: 'indigo', color: 'bg-[#6366f1]' },{ id: 'emerald', color: 'bg-[#10b981]' },{ id: 'rose', color: 'bg-[#f43f5e]' },{ id: 'amber', color: 'bg-[#f59e0b]' }].map(t => (
+                                        <button 
+                                            key={t.id}
+                                            onClick={() => { setThemeColor(t.id); setShowThemeMenu(false); }}
+                                            className={`w-full text-left px-4 py-3 text-sm flex items-center gap-3 capitalize transition-colors ${themeColor === t.id ? 'bg-slate-700 text-white font-medium' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'}`}
+                                        >
+                                            <div 
+                                                className={`w-3.5 h-3.5 rounded-full ${t.color} ${themeColor === t.id ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-700' : ''}`} 
+                                                style={{ filter: theme === 'light' ? `invert(1) hue-rotate(${180 - THEME_HUES[themeColor]}deg)` : `hue-rotate(${-THEME_HUES[themeColor]}deg)` }}
+                                            />
+                                            {t.id}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                            >
+                                <div className="bg-indigo-500 rounded-full p-1">
+                                    <User size={20} />
+                                </div>
+                                {user && <span className="text-sm font-medium pr-2">{user.email.split('@')[0]}</span>}
+                            </button>
 
                         {/* Dropdown Menu */}
                         {showUserMenu && (
@@ -903,6 +954,7 @@ function App() {
                                 )}
                             </div>
                         )}
+                    </div>
                     </div>
                 </header>
 

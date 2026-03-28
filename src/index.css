@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dynamic Theme Mapping via Hue Rotation */
+html[data-theme="emerald"] { --theme-hue: -120deg; }
+html[data-theme="rose"] { --theme-hue: 90deg; }
+html[data-theme="amber"] { --theme-hue: 155deg; }
+html[data-theme="indigo"], html:not([data-theme]) { --theme-hue: 0deg; }
+
+/* Apply Hue Shift */
+html {
+  filter: hue-rotate(var(--theme-hue, 0deg));
+}
+html.light-theme {
+  filter: invert(1) hue-rotate(calc(180deg + var(--theme-hue, 0deg)));
+}
+
+/* Un-rotate media to keep true colors (e.g. skin tones, user photos) */
+html img, html video, html canvas, html input[type="color"], html .keep-color {
+  filter: hue-rotate(calc(var(--theme-hue, 0deg) * -1)) !important;
+}
+html.light-theme img, html.light-theme video, html.light-theme canvas, html.light-theme input[type="color"], html.light-theme .keep-color {
+  filter: invert(1) hue-rotate(calc(180deg - var(--theme-hue, 0deg))) !important;
+}
+
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -109,4 +131,19 @@ button:focus-visible {
 
 .mb-4 {
   margin-bottom: 1rem;
+}
+
+.light-theme {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.light-theme img,
+.light-theme video,
+.light-theme canvas,
+.light-theme input[type="color"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+body, html {
+  background-color: #020617;
 }
