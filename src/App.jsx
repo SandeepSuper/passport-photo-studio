@@ -1111,21 +1111,32 @@ function App() {
                                     />
                                 </div>
 
-                                <div className="flex items-center gap-8 mb-4">
-                                    <div className="flex-1">
-                                        <label className="block text-sm text-slate-400 mb-2">Zoom</label>
+                                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 mb-4 w-full">
+                                    <div className="w-full md:flex-1">
+                                        <label className="block text-sm text-slate-400 mb-2 flex justify-between items-center">
+                                            <span>Zoom</span>
+                                            <span className="text-white text-xs bg-slate-800 px-2 py-1 rounded">{zoom.toFixed(1)}x</span>
+                                        </label>
                                         <input
                                             type="range" min={1} max={3} step={0.1}
                                             value={zoom} onChange={(e) => setZoom(Number(e.target.value))}
-                                            className="w-full accent-indigo-600"
+                                            className="w-full accent-indigo-600 cursor-pointer"
                                         />
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="block text-sm text-slate-400 mb-2">Rotation</label>
+                                    <div className="w-full md:flex-1">
+                                        <label className="block text-sm text-slate-400 mb-2 flex justify-between items-center">
+                                            <span>Rotation</span>
+                                            <button 
+                                                onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded text-xs transition-colors flex items-center gap-1 shadow-sm"
+                                            >
+                                                <RefreshCw size={12} /> Rotate 90°
+                                            </button>
+                                        </label>
                                         <input
                                             type="range" min={0} max={360}
                                             value={rotation} onChange={(e) => setRotation(Number(e.target.value))}
-                                            className="w-full accent-indigo-600"
+                                            className="w-full accent-indigo-600 cursor-pointer"
                                         />
                                     </div>
                                 </div>

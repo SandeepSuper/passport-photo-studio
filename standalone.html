@@ -127,6 +127,7 @@
         }
 
         // --- App Component ---
+        const API_URL = 'https://ihdzz1fxmg.execute-api.ap-south-1.amazonaws.com';
         const STEPS = [
             { id: 1, name: 'Upload', icon: Upload },
             { id: 2, name: 'Crop', icon: Scissors },
@@ -488,55 +489,98 @@
                     }
                 }
 
+                setLoading(true);
+                setLoadingMsg("Initializing Payment...");
                 const isPro = selectedPlan === 'pro';
-                const options = {
-                    "key": "rzp_test_Rvj7jfCCdtvpMu",
-                    "amount": isPro ? "199900" : "69900",
-                    "currency": "INR",
-                    "name": "Passport Studio",
-                    "description": isPro ? "Pro Subscription (Monthly)" : "Single Sheet Download",
-                    "image": "https://example.com/your_logo",
-                    "handler": function (response) {
-                        console.log("Payment Success:", response);
-                        if (selectedPlan === 'pro') {
-                            const expiry = new Date().getTime() + (30 * 24 * 60 * 60 * 1000); // 30 Days
-                            const updatedUser = user ? { ...user, role: 'pro', expiry } : { email: 'guest', role: 'pro', expiry };
-                            setUser(updatedUser);
-                            updateUserInDB(updatedUser);
-                        }
-
-                        setLoading(true);
-                        setLoadingMsg('Verifying Payment...');
-
-                        setTimeout(() => {
-                            setIsPaid(true);
-                            setShowPaymentModal(false);
-                            setLoading(false);
-                            setLoadingMsg('');
-
-                            if (pendingAction === 'print') {
-                                setTimeout(() => doPrint(), 500);
-                            } else if (pendingAction === 'download') {
-                                downloadSheet();
-                            }
-                            setPendingAction(null);
-                        }, 1000);
-                    },
-                    "prefill": {
-                        "name": "User Name",
-                        "email": "user@example.com",
-                        "contact": "9999999999"
-                    },
-                    "theme": { "color": "#4f46e5" },
-                    "modal": {
-                        "ondismiss": function () {
-                            setLoading(false);
-                            console.log('Checkout form closed');
-                        }
-                    }
-                };
+                const amount = isPro ? 199900 : 69900;
 
                 try {
+                    // 1. Fetch Order ID from AWS Lambda Backend
+                    const getOrderRes = await fetch(`${API_URL}/create-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount, plan: selectedPlan })
+                    });
+
+                    if (!getOrderRes.ok) throw new Error("Could not create order");
+                    const orderData = await getOrderRes.json();
+
+                    if (!orderData.order_id || !orderData.key_id) {
+                        throw new Error("Invalid response from server");
+                    }
+
+                    setLoading(false);
+
+                    // 2. Open Razorpay Popup
+                    const options = {
+                        "key": orderData.key_id,
+                        "amount": amount,
+                        "currency": "INR",
+                        "name": "Passport Studio",
+                        "description": isPro ? "Pro Subscription (Monthly)" : "Single Sheet Download",
+                        "image": "https://example.com/your_logo",
+                        "order_id": orderData.order_id,
+                        "handler": async function (response) {
+                            console.log("Payment completed, verifying...");
+                            try {
+                                setLoading(true);
+                                setLoadingMsg('Verifying Payment...');
+
+                                // 3. Verify Payment Signature via AWS Lambda
+                                const verifyRes = await fetch(`${API_URL}/verify-payment`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        razorpay_order_id: response.razorpay_order_id,
+                                        razorpay_payment_id: response.razorpay_payment_id,
+                                        razorpay_signature: response.razorpay_signature
+                                    })
+                                });
+
+                                const verifyData = await verifyRes.json();
+
+                                if (verifyRes.ok && verifyData.success) {
+                                    if (selectedPlan === 'pro') {
+                                        const expiry = new Date().getTime() + (30 * 24 * 60 * 60 * 1000); // 30 Days
+                                        const updatedUser = user ? { ...user, role: 'pro', expiry } : { email: 'guest', role: 'pro', expiry };
+                                        setUser(updatedUser);
+                                        updateUserInDB(updatedUser);
+                                    }
+
+                                    setIsPaid(true);
+                                    setShowPaymentModal(false);
+
+                                    if (pendingAction === 'print') {
+                                        setTimeout(() => doPrint(), 500);
+                                    } else if (pendingAction === 'download') {
+                                        downloadSheet();
+                                    }
+                                    setPendingAction(null);
+                                } else {
+                                    alert("Payment verification failed! " + verifyData.message);
+                                }
+                            } catch (verifyError) {
+                                console.error("Verification Error:", verifyError);
+                                alert("An error occurred during payment verification.");
+                            } finally {
+                                setLoading(false);
+                                setLoadingMsg('');
+                            }
+                        },
+                        "prefill": {
+                            "name": "User Name",
+                            "email": "user@example.com",
+                            "contact": "9999999999"
+                        },
+                        "theme": { "color": "#4f46e5" },
+                        "modal": {
+                            "ondismiss": function () {
+                                setLoading(false);
+                                console.log('Checkout form closed');
+                            }
+                        }
+                    };
+
                     const rzp1 = new window.Razorpay(options);
                     rzp1.on('payment.failed', function (response) {
                         alert("Payment Failed: " + response.error.code);
@@ -544,9 +588,10 @@
                         setLoading(false);
                     });
                     rzp1.open();
+
                 } catch (err) {
                     console.error("Razorpay Error:", err);
-                    alert("Payment Gateway Error. Please check console.");
+                    alert("Payment Gateway Initialization Error. Check if connection is correct.");
                     setLoading(false);
                 }
             };
