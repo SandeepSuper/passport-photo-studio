@@ -4,6 +4,9 @@ import { removeBackground, preload } from '@imgly/background-removal';
 import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture } from 'lucide-react';
 import getCroppedImg from './canvasUtils';
 import './index.css';
+import { auth, db, googleProvider } from './firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // AWS API Gateway URL for Razorpay handling
 const API_URL = 'https://ihdzz1fxmg.execute-api.ap-south-1.amazonaws.com';
@@ -91,19 +94,32 @@ function App() {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     // --- Handlers ---
-
-    // Init Check
     useEffect(() => {
-        // Check session
-        const sessionEmail = localStorage.getItem('passport_session');
-        if (sessionEmail) {
-            const usersDB = JSON.parse(localStorage.getItem('passport_users_db') || '{}');
-            const userData = usersDB[sessionEmail];
-            if (userData) {
-                setUser(userData);
-                checkSubscription(userData);
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", currentUser.email));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        setUser(userData);
+                        checkSubscription(userData);
+                    } else {
+                        const newUserData = { email: currentUser.email, role: 'free', freeDownloads: 1 };
+                        await setDoc(doc(db, "users", currentUser.email), newUserData);
+                        setUser(newUserData);
+                        checkSubscription(newUserData);
+                    }
+                } catch (e) {
+                    console.error("Error fetching user data from Firestore", e);
+                    // Fallback so UI still shows user is logged in even if Database rules block access
+                    setUser({ email: currentUser.email, role: 'free', freeDownloads: 1 });
+                }
+            } else {
+                setUser(null);
+                setIsPaid(false);
             }
-        }
+        });
+        return () => unsubscribe();
     }, []);
 
     const checkSubscription = (userData) => {
@@ -115,48 +131,83 @@ function App() {
                 alert("Your Pro Subscription has expired.");
                 const updated = { ...userData, role: 'free' };
                 setUser(updated);
+                setIsPaid(false);
                 updateUserInDB(updated);
             }
+        } else {
+            setIsPaid(false);
         }
     };
 
-    const updateUserInDB = (userData) => {
-        const usersDB = JSON.parse(localStorage.getItem('passport_users_db') || '{}');
-        usersDB[userData.email] = userData;
-        localStorage.setItem('passport_users_db', JSON.stringify(usersDB));
+    const updateUserInDB = async (userData) => {
+        try {
+            await setDoc(doc(db, "users", userData.email), userData);
+        } catch (error) {
+            console.error("Error updating user in DB:", error);
+        }
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (authEmail && authPass) {
-            const usersDB = JSON.parse(localStorage.getItem('passport_users_db') || '{}');
-            let targetUser = usersDB[authEmail];
-
-            if (!targetUser) {
-                // Create new if signup, or auto-create for demo login if not found
-                targetUser = { email: authEmail, role: 'free' };
-                if (authMode === 'signup') {
-                    // fresh user
-                } else {
-                    // allow login even if distinct (mock behavior)
-                }
-                usersDB[authEmail] = targetUser;
-                localStorage.setItem('passport_users_db', JSON.stringify(usersDB));
+        if (!authEmail || !authPass) return;
+        setLoading(true);
+        setLoadingMsg(authMode === 'login' ? 'Logging in...' : 'Creating Account...');
+        
+        try {
+            if (authMode === 'signup') {
+                await createUserWithEmailAndPassword(auth, authEmail, authPass);
+                const newUserData = { email: authEmail, role: 'free', freeDownloads: 1 };
+                await setDoc(doc(db, "users", authEmail), newUserData);
+                setUser(newUserData);
+            } else {
+                await signInWithEmailAndPassword(auth, authEmail, authPass);
             }
-
-            // Set Session
-            setUser(targetUser);
-            checkSubscription(targetUser);
-            localStorage.setItem('passport_session', authEmail);
             setShowAuthModal(false);
+        } catch (error) {
+            console.error("Auth error:", error);
+            const msg = error.code ? error.code.split('/')[1].replace(/-/g, ' ') : error.message;
+            alert(`Authentication Failed: ${msg.toUpperCase()}`);
+        } finally {
+            setLoading(false);
+            setLoadingMsg('');
+            setAuthPass(''); // clear password field
         }
     };
 
-    const handleLogout = () => {
-        setUser(null);
-        setIsPaid(false); // Revoke access
-        localStorage.removeItem('passport_session');
-        // Do NOT clear users_db
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Logout error", error);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setLoadingMsg('Signing in with Google...');
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+            
+            // Check if user exists in Firestore
+            const userDoc = await getDoc(doc(db, "users", user.email));
+            if (!userDoc.exists()) {
+                // If new Google user, create a free tier record
+                const newUserData = { email: user.email, role: 'free', freeDownloads: 1 };
+                await setDoc(doc(db, "users", user.email), newUserData);
+                setUser(newUserData);
+            }
+            setShowAuthModal(false);
+        } catch (error) {
+            console.error("Google Auth error:", error);
+            const msg = error.code ? error.code.split('/')[1].replace(/-/g, ' ') : error.message;
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert(`Google Sign-In Failed: ${msg.toUpperCase()}`);
+            }
+        } finally {
+            setLoading(false);
+            setLoadingMsg('');
+        }
     };
 
     const startCamera = async () => {
@@ -528,8 +579,8 @@ function App() {
                     }
                 },
                 "prefill": {
-                    "name": "User Name",
-                    "email": "user@example.com",
+                    "name": user ? user.email.split('@')[0] : "User Name",
+                    "email": user ? user.email : "user@example.com",
                     "contact": "9999999999"
                 },
                 "theme": { "color": "#4f46e5" },
@@ -604,22 +655,78 @@ function App() {
         }
     };
 
-    const handlePrintClick = () => {
-        if (isPaid) {
-            doPrint();
-        } else {
-            triggerPayment('print');
+    const handlePrintClick = async () => {
+        if (!user) {
+            alert("Please Login or Create an Account to print your photo.");
+            setAuthMode('login');
+            setShowAuthModal(true);
+            return;
         }
+
+        if (isPaid || user.role === 'pro') {
+            doPrint();
+            return;
+        }
+
+        if (user.role === 'free' && user.freeDownloads > 0) {
+            const confirmFree = window.confirm("You have 1 Free Print/Download available! Use it now?");
+            if (confirmFree) {
+                try {
+                    setLoading(true); setLoadingMsg('Using Free Credit...');
+                    const updatedUser = { ...user, freeDownloads: user.freeDownloads - 1 };
+                    await updateUserInDB(updatedUser);
+                    setUser(updatedUser);
+                    setIsPaid(true); // Grant temporary access for this session
+                    doPrint();
+                } catch(e) {
+                    alert("Error applying free credit.");
+                } finally {
+                    setLoading(false); setLoadingMsg('');
+                }
+            }
+            return;
+        }
+
+        triggerPayment('print');
     };
 
-    const handleDownloadClick = (e, type = 'sheet') => {
-        if (!isPaid) {
-            e.preventDefault();
-            triggerPayment(type === 'sheet' ? 'download' : 'download-single');
-        } else {
+    const handleDownloadClick = async (e, type = 'sheet') => {
+        e.preventDefault();
+        
+        if (!user) {
+            alert("Please Login or Create an Account to download your photo.");
+            setAuthMode('login');
+            setShowAuthModal(true);
+            return;
+        }
+
+        if (isPaid || user.role === 'pro') {
             if (type === 'sheet') downloadSheet();
             else downloadSingle();
+            return;
         }
+
+        if (user.role === 'free' && user.freeDownloads > 0) {
+            const confirmFree = window.confirm(`You have 1 Free ${type === 'sheet' ? 'Sheet' : 'Single Photo'} Download available! Use it now?`);
+            if (confirmFree) {
+                try {
+                    setLoading(true); setLoadingMsg('Using Free Credit...');
+                    const updatedUser = { ...user, freeDownloads: user.freeDownloads - 1 };
+                    await updateUserInDB(updatedUser);
+                    setUser(updatedUser);
+                    setIsPaid(true); // Grant temporary access
+                    if (type === 'sheet') downloadSheet();
+                    else downloadSingle();
+                } catch(e) {
+                    alert("Error applying free credit.");
+                } finally {
+                    setLoading(false); setLoadingMsg('');
+                }
+            }
+            return;
+        }
+
+        triggerPayment(type === 'sheet' ? 'download' : 'download-single');
     };
 
     const isStepAvailable = (stepId) => {
@@ -834,7 +941,27 @@ function App() {
                                         {authMode === 'login' ? 'Login' : 'Sign Up'}
                                     </button>
                                 </form>
-                                <p className="text-center text-sm text-slate-500 mt-4">
+
+                                <div className="mt-4 flex items-center">
+                                    <div className="flex-1 border-t border-slate-700"></div>
+                                    <span className="px-3 text-xs text-slate-500 uppercase">Or Continue With</span>
+                                    <div className="flex-1 border-t border-slate-700"></div>
+                                </div>
+                                <button
+                                    onClick={handleGoogleLogin}
+                                    type="button"
+                                    className="w-full mt-4 bg-white text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg"
+                                >
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    Google
+                                </button>
+
+                                <p className="text-center text-sm text-slate-500 mt-6">
                                     {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
                                     <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-indigo-400 hover:underline">
                                         {authMode === 'login' ? 'Sign Up' : 'Login'}
@@ -1130,7 +1257,7 @@ function App() {
                                             className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors border border-slate-700 hover:border-slate-500 flex items-center justify-center gap-2"
                                             onClick={(e) => handleDownloadClick(e, 'single')}
                                         >
-                                            <Download size={18} /> Get Single Digital
+                                            <Download size={18} /> {user && user.role === 'free' && user.freeDownloads > 0 ? "Get Single Free" : "Get Single Digital"}
                                         </button>
                                         {navigator.share && (
                                             <button
@@ -1176,16 +1303,17 @@ function App() {
 
                                 <div className="flex flex-wrap justify-center gap-4">
                                     <button
-                                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg"
                                         onClick={handlePrintClick}
                                     >
-                                        <Printer size={20} /> Print Sheet
+                                        <Printer size={20} /> {user && user.role === 'free' && user.freeDownloads > 0 ? "Print for Free (1 Left)" : "Print Sheet"}
                                     </button>
                                     <button
-                                        className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg"
                                         onClick={(e) => handleDownloadClick(e, 'sheet')}
                                     >
-                                        <CreditCard size={20} /> Buy Sheet
+                                        {user && user.role === 'free' && user.freeDownloads > 0 ? <Download size={20} /> : <CreditCard size={20} />} 
+                                        {user && user.role === 'free' && user.freeDownloads > 0 ? "Download Free (1 Left)" : "Buy Sheet"}
                                     </button>
                                 </div>
                             </div>
