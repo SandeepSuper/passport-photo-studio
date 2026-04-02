@@ -1,12 +1,16 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { removeBackground, preload } from '@imgly/background-removal';
-import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture, Sun, Moon, Palette } from 'lucide-react';
+import { Upload, Scissors, Wand2, Image as ImageIcon, Printer, Grid, RefreshCw, Check, CreditCard, User, LogOut, Camera, Loader2, Share2, Download, Aperture, Sun, Moon, Palette, Lock } from 'lucide-react';
 import getCroppedImg from './canvasUtils';
 import './index.css';
 import { auth, db, googleProvider } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import fpPromise from '@fingerprintjs/fingerprintjs';
+
+// Initialize the fingerprint agent at application startup.
+const fpInstancePromise = fpPromise.load();
 
 // AWS API Gateway URL for Razorpay handling
 const API_URL = 'https://ihdzz1fxmg.execute-api.ap-south-1.amazonaws.com';
@@ -49,25 +53,116 @@ const CROP_ASPECTS = [
 
 const THEME_HUES = { indigo: 0, emerald: -120, rose: 90, amber: 155 };
 
+// ------- Reusable Protected Image Component -------
+// Prevents right-click save, drag-save, and adds prominent tiled watermarks.
+function ProtectedImage({ src, alt, className = '', isPro = false }) {
+    const blockAction = (e) => e.preventDefault();
+    // Generate a dense grid of watermark stamp positions
+    const positions = [];
+    for (let top = 8; top <= 105; top += 22) {
+        for (let left = 5; left <= 105; left += 28) {
+            positions.push({ top: `${top}%`, left: `${left}%` });
+        }
+    }
+
+    // Outer wrapper rotated -30deg; inner text is two lines stacked
+    const wrapperStyle = {
+        transform: 'rotate(-30deg)',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        lineHeight: 1.15,
+    };
+    const line1Style = {
+        fontSize: '0.72rem',
+        fontWeight: 800,
+        letterSpacing: '0.12em',
+        color: 'rgba(190,190,200,0.50)',
+        textShadow: '0 1px 2px rgba(0,0,0,0.25)',
+        whiteSpace: 'nowrap',
+        fontFamily: 'Arial, sans-serif',
+        textTransform: 'capitalize',
+    };
+    const line2Style = {
+        fontSize: '0.72rem',
+        fontWeight: 800,
+        letterSpacing: '0.12em',
+        color: 'rgba(190,190,200,0.50)',
+        textShadow: '0 1px 2px rgba(0,0,0,0.25)',
+        whiteSpace: 'nowrap',
+        fontFamily: 'Arial, sans-serif',
+    };
+    return (
+        <div className="relative inline-block select-none overflow-hidden" style={{ lineHeight: 0 }}>
+            <img
+                src={src}
+                alt={alt}
+                draggable={false}
+                onContextMenu={blockAction}
+                onDragStart={blockAction}
+                className={className}
+                style={{ pointerEvents: 'none', display: 'block', opacity: 1 }}
+            />
+            {/* Tiled two-line watermarks matching reference image style */}
+            {!isPro && positions.map((pos, i) => (
+                <div
+                    key={i}
+                    className="absolute pointer-events-none select-none"
+                    style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
+                >
+                    <div style={wrapperStyle}>
+                        <span style={line1Style}>Photo</span>
+                        <span style={line2Style}>Passport.in</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+// ---------------------------------------------------
+
 function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
-    const [step, setStep] = useState(1);
+    // --- Restore step from sessionStorage on refresh ---
+    const [step, setStepRaw] = useState(() => {
+        const saved = sessionStorage.getItem('pp_step');
+        return saved ? parseInt(saved, 10) : 1;
+    });
+    // Wrapper so every setStep call also persists to sessionStorage
+    const setStep = (s) => {
+        sessionStorage.setItem('pp_step', s);
+        setStepRaw(s);
+    };
+
     const [showThemeMenu, setShowThemeMenu] = useState(false);
     const [loading, setLoading] = useState(false);
     const [loadingMsg, setLoadingMsg] = useState('');
     const [bgProgress, setBgProgress] = useState(0); // 0-100 for background removal
 
-    // Data
-    const [originalImage, setOriginalImage] = useState(null);
-    const [croppedImage, setCroppedImage] = useState(null);
-    const [enhancedImage, setEnhancedImage] = useState(null);
-    const [bgRemovedImage, setBgRemovedImage] = useState(null);
-    const [sheetImage, setSheetImage] = useState(null);
+    // Data — restored from sessionStorage so refresh keeps the user in studio
+    const [originalImage, setOriginalImageRaw] = useState(() => sessionStorage.getItem('pp_originalImage') || null);
+    const [croppedImage, setCroppedImageRaw] = useState(() => sessionStorage.getItem('pp_croppedImage') || null);
+    const [enhancedImage, setEnhancedImageRaw] = useState(() => sessionStorage.getItem('pp_enhancedImage') || null);
+    const [bgRemovedImage, setBgRemovedImageRaw] = useState(() => sessionStorage.getItem('pp_bgRemovedImage') || null);
+    const [sheetImage, setSheetImageRaw] = useState(() => sessionStorage.getItem('pp_sheetImage') || null);
+    const [secureSheetPreview, setSecureSheetPreviewRaw] = useState(() => sessionStorage.getItem('pp_secureSheetPreview') || null);
+    const [securePhotoPreview, setSecurePhotoPreviewRaw] = useState(() => sessionStorage.getItem('pp_securePhotoPreview') || null);
+
+    // Auto-persist helpers
+    const setOriginalImage = (v) => { v ? sessionStorage.setItem('pp_originalImage', v) : sessionStorage.removeItem('pp_originalImage'); setOriginalImageRaw(v); };
+    const setCroppedImage  = (v) => { v ? sessionStorage.setItem('pp_croppedImage', v) : sessionStorage.removeItem('pp_croppedImage'); setCroppedImageRaw(v); };
+    const setEnhancedImage = (v) => { v ? sessionStorage.setItem('pp_enhancedImage', v) : sessionStorage.removeItem('pp_enhancedImage'); setEnhancedImageRaw(v); };
+    const setBgRemovedImage = (v) => { v ? sessionStorage.setItem('pp_bgRemovedImage', v) : sessionStorage.removeItem('pp_bgRemovedImage'); setBgRemovedImageRaw(v); };
+    const setSheetImage    = (v) => { v ? sessionStorage.setItem('pp_sheetImage', v) : sessionStorage.removeItem('pp_sheetImage'); setSheetImageRaw(v); };
+    const setSecureSheetPreview = (v) => { v ? sessionStorage.setItem('pp_secureSheetPreview', v) : sessionStorage.removeItem('pp_secureSheetPreview'); setSecureSheetPreviewRaw(v); };
+    const setSecurePhotoPreview = (v) => { v ? sessionStorage.setItem('pp_securePhotoPreview', v) : sessionStorage.removeItem('pp_securePhotoPreview'); setSecurePhotoPreviewRaw(v); };
 
     // Crop State
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
-    const [selectedSize, setSelectedSize] = useState('india');
+    const [selectedSize, setSelectedSize] = useState(() => sessionStorage.getItem('pp_selectedSize') || 'india');
     const [aspect, setAspect] = useState(35 / 45);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
@@ -78,9 +173,15 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
     }, [selectedSize]);
 
     // Enhance State
-    const [brightness, setBrightness] = useState(100); // 100% is default
-    const [contrast, setContrast] = useState(100);
-    const [saturation, setSaturation] = useState(100);
+    const [brightness, setBrightness] = useState(() => parseInt(sessionStorage.getItem('pp_brightness') || '100', 10));
+    const [contrast,   setContrast]   = useState(() => parseInt(sessionStorage.getItem('pp_contrast')   || '100', 10));
+    const [saturation, setSaturation] = useState(() => parseInt(sessionStorage.getItem('pp_saturation') || '100', 10));
+
+    // Persist selectedSize whenever it changes
+    useEffect(() => { sessionStorage.setItem('pp_selectedSize', selectedSize); }, [selectedSize]);
+    useEffect(() => { sessionStorage.setItem('pp_brightness',   brightness);   }, [brightness]);
+    useEffect(() => { sessionStorage.setItem('pp_contrast',     contrast);     }, [contrast]);
+    useEffect(() => { sessionStorage.setItem('pp_saturation',   saturation);   }, [saturation]);
 
     // Background State
     const [bgColor, setBgColor] = useState('#ffffff');
@@ -110,18 +211,33 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                     const userDoc = await getDoc(doc(db, "users", currentUser.email));
                     if (userDoc.exists()) {
                         const userData = userDoc.data();
+                        // Grant Pro access to specific email
+                        if (userData.email === 'sandeep.official.saini@gmail.com') {
+                            userData.role = 'pro';
+                            userData.expiry = new Date().getTime() + (365 * 24 * 60 * 60 * 1000); // 1 year
+                        }
                         setUser(userData);
                         checkSubscription(userData);
                     } else {
                         const newUserData = { email: currentUser.email, role: 'free', freeDownloads: 1 };
+                        // Grant Pro access to specific email (New User case)
+                        if (currentUser.email === 'sandeep.official.saini@gmail.com') {
+                            newUserData.role = 'pro';
+                            newUserData.expiry = new Date().getTime() + (365 * 24 * 60 * 60 * 1000);
+                        }
                         await setDoc(doc(db, "users", currentUser.email), newUserData);
                         setUser(newUserData);
                         checkSubscription(newUserData);
                     }
                 } catch (e) {
                     console.error("Error fetching user data from Firestore", e);
-                    // Fallback so UI still shows user is logged in even if Database rules block access
-                    setUser({ email: currentUser.email, role: 'free', freeDownloads: 1 });
+                    // Fallback
+                    const fallbackData = { email: currentUser.email, role: 'free', freeDownloads: 1 };
+                    if (currentUser.email === 'sandeep.official.saini@gmail.com') {
+                        fallbackData.role = 'pro';
+                        fallbackData.expiry = new Date().getTime() + (365 * 24 * 60 * 60 * 1000);
+                    }
+                    setUser(fallbackData);
                 }
             } else {
                 setUser(null);
@@ -408,7 +524,52 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
             // Draw Person
             ctx.drawImage(img, 0, 0);
 
-            setBgRemovedImage(canvas.toDataURL('image/jpeg', 0.95));
+            const fullUrl = canvas.toDataURL('image/jpeg', 0.95);
+            setBgRemovedImage(fullUrl);
+
+            // Generate a full-res secure preview for Step 5 (watermarked for non-pro)
+            const previewW = img.width;
+            const previewH = img.height;
+            const previewCanvas = document.createElement('canvas');
+            previewCanvas.width = previewW;
+            previewCanvas.height = previewH;
+            const previewCtx = previewCanvas.getContext('2d');
+            previewCtx.fillStyle = bgColor;
+            previewCtx.fillRect(0, 0, previewW, previewH);
+            previewCtx.drawImage(img, 0, 0, previewW, previewH);
+            
+            // --- PHOTO PASSPORT WATERMARK (Two-line style matching reference image) ---
+            previewCtx.save();
+            previewCtx.rotate(-Math.PI / 6); // -30 degrees
+            previewCtx.textAlign = 'center';
+            previewCtx.textBaseline = 'middle';
+
+            // Line 1: "Photo"  |  Line 2: "Passport.in"
+            const wmFontSize = Math.round(previewW * 0.072);
+            const wmLineGap = Math.round(wmFontSize * 1.2); // space between two lines
+            previewCtx.font = `800 ${wmFontSize}px Arial, sans-serif`;
+            previewCtx.fillStyle = 'rgba(200, 200, 210, 0.45)';
+            previewCtx.strokeStyle = 'rgba(0,0,0,0.07)';
+            previewCtx.lineWidth = 1;
+
+            // Dense tiling
+            const stepX = previewW * 0.52;
+            const stepY = previewH * 0.34;
+            for (let y = -previewH * 1.5; y < previewH * 2.5; y += stepY) {
+                for (let x = -previewW * 1.5; x < previewW * 2.5; x += stepX) {
+                    // Line 1: "Photo"
+                    previewCtx.strokeText('Photo', x, y - wmLineGap / 2);
+                    previewCtx.fillText('Photo', x, y - wmLineGap / 2);
+                    // Line 2: "Passport.in"
+                    previewCtx.strokeText('Passport.in', x, y + wmLineGap / 2);
+                    previewCtx.fillText('Passport.in', x, y + wmLineGap / 2);
+                }
+            }
+            previewCtx.restore();
+
+            // Maximum quality — watermark only, no quality reduction
+            setSecurePhotoPreview(previewCanvas.toDataURL('image/jpeg', 1.0));
+
             setStep(5);
         } catch (e) {
             clearInterval(progressInterval);
@@ -451,19 +612,19 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
             const activeSize = PHOTO_SIZES.find(s => s.id === selectedSize) || PHOTO_SIZES[0];
             const photoWidth = Math.round(activeSize.w * mmToPx);
             const photoHeight = Math.round(activeSize.h * mmToPx);
-            const gap = 30;
 
-            // Auto-calculate how many cols/rows fit on the sheet
-            const cols = Math.floor((sheetW + gap) / (photoWidth + gap));
-            const rows = Math.floor((sheetH + gap) / (photoHeight + gap));
+            // Count cols/rows purely by photo size (no pre-assumed gap)
+            const cols = Math.floor(sheetW / photoWidth);
+            const rows = Math.floor(sheetH / photoHeight);
 
-            const startX = (sheetW - (cols * photoWidth + (cols - 1) * gap)) / 2;
-            const startY = (sheetH - (rows * photoHeight + (rows - 1) * gap)) / 2;
+            // Distribute leftover space evenly as gaps (including outer margins)
+            const gapX = (sheetW - cols * photoWidth) / (cols + 1);
+            const gapY = (sheetH - rows * photoHeight) / (rows + 1);
 
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
-                    const x = startX + c * (photoWidth + gap);
-                    const y = startY + r * (photoHeight + gap);
+                    const x = Math.round(gapX + c * (photoWidth + gapX));
+                    const y = Math.round(gapY + r * (photoHeight + gapY));
                     ctx.drawImage(img, x, y, photoWidth, photoHeight);
                     ctx.strokeStyle = '#ccc';
                     ctx.lineWidth = 1;
@@ -472,6 +633,44 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
             }
 
             setSheetImage(canvas.toDataURL('image/jpeg', 1.0));
+            
+            // --- Two-line Watermark (matching reference image: Photo / Passport.in) ---
+            const wmCanvas = document.createElement('canvas');
+            wmCanvas.width = sheetW;
+            wmCanvas.height = sheetH;
+            const wmCtx = wmCanvas.getContext('2d');
+            wmCtx.drawImage(canvas, 0, 0); // Copy the full clean sheet
+
+            wmCtx.save();
+            wmCtx.rotate(-Math.PI / 6); // -30 degrees
+            wmCtx.textAlign = 'center';
+            wmCtx.textBaseline = 'middle';
+
+            const sheetFontSize = Math.round(sheetW * 0.036);
+            const sheetLineGap = Math.round(sheetFontSize * 1.25);
+            wmCtx.font = `800 ${sheetFontSize}px Arial, sans-serif`;
+            wmCtx.fillStyle = 'rgba(200, 200, 210, 0.42)';
+            wmCtx.strokeStyle = 'rgba(0,0,0,0.07)';
+            wmCtx.lineWidth = 2;
+
+            // Dense tiling for full sheet coverage
+            const tileStepX = sheetW * 0.22;
+            const tileStepY = sheetH * 0.20;
+            for (let ty = -sheetH * 1.5; ty < sheetH * 2.5; ty += tileStepY) {
+                for (let tx = -sheetW * 1.5; tx < sheetW * 2.5; tx += tileStepX) {
+                    // Line 1: "Photo"
+                    wmCtx.strokeText('Photo', tx, ty - sheetLineGap / 2);
+                    wmCtx.fillText('Photo', tx, ty - sheetLineGap / 2);
+                    // Line 2: "Passport.in"
+                    wmCtx.strokeText('Passport.in', tx, ty + sheetLineGap / 2);
+                    wmCtx.fillText('Passport.in', tx, ty + sheetLineGap / 2);
+                }
+            }
+            wmCtx.restore();
+
+            // Maximum quality — no quality loss, only watermark added
+            setSecureSheetPreview(wmCanvas.toDataURL('image/jpeg', 1.0));
+
             setStep(6);
         } catch (e) {
             console.error(e);
@@ -681,13 +880,36 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
             const confirmFree = window.confirm("You have 1 Free Print/Download available! Use it now?");
             if (confirmFree) {
                 try {
-                    setLoading(true); setLoadingMsg('Using Free Credit...');
+                    setLoading(true); setLoadingMsg('Verifying Device ID...');
+                    
+                    // --- DEVICE FINGERPRINT CHECK ---
+                    const fp = await fpInstancePromise;
+                    const result = await fp.get();
+                    const visitorId = result.visitorId;
+
+                    const deviceRef = doc(db, 'devices', visitorId);
+                    const deviceSnap = await getDoc(deviceRef);
+                    
+                    if (deviceSnap.exists() && deviceSnap.data().usedFree) {
+                        alert("A free photo has already been downloaded from this device using another account. Please purchase a single download or upgrade to Pro.");
+                        setLoading(false);
+                        triggerPayment('print');
+                        return;
+                    }
+                    
+                    setLoadingMsg('Using Free Credit...');
+                    
+                    // Burn credit on Device
+                    await setDoc(deviceRef, { usedFree: true, email: user.email, timestamp: new Date().toISOString() }, { merge: true });
+                    
+                    // Burn credit on Account
                     const updatedUser = { ...user, freeDownloads: user.freeDownloads - 1 };
                     await updateUserInDB(updatedUser);
                     setUser(updatedUser);
                     setIsPaid(true); // Grant temporary access for this session
                     doPrint();
                 } catch(e) {
+                    console.error(e);
                     alert("Error applying free credit.");
                 } finally {
                     setLoading(false); setLoadingMsg('');
@@ -719,7 +941,29 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
             const confirmFree = window.confirm(`You have 1 Free ${type === 'sheet' ? 'Sheet' : 'Single Photo'} Download available! Use it now?`);
             if (confirmFree) {
                 try {
-                    setLoading(true); setLoadingMsg('Using Free Credit...');
+                    setLoading(true); setLoadingMsg('Verifying Device ID...');
+                    
+                    // --- DEVICE FINGERPRINT CHECK ---
+                    const fp = await fpInstancePromise;
+                    const result = await fp.get();
+                    const visitorId = result.visitorId;
+
+                    const deviceRef = doc(db, 'devices', visitorId);
+                    const deviceSnap = await getDoc(deviceRef);
+                    
+                    if (deviceSnap.exists() && deviceSnap.data().usedFree) {
+                        alert("A free photo has already been downloaded from this device using another account. Please purchase a single download or upgrade to Pro.");
+                        setLoading(false);
+                        triggerPayment(type === 'sheet' ? 'download' : 'download-single');
+                        return;
+                    }
+                    
+                    setLoadingMsg('Using Free Credit...');
+                    
+                    // Burn credit on Device
+                    await setDoc(deviceRef, { usedFree: true, email: user.email, timestamp: new Date().toISOString() }, { merge: true });
+
+                    // Burn credit on Account
                     const updatedUser = { ...user, freeDownloads: user.freeDownloads - 1 };
                     await updateUserInDB(updatedUser);
                     setUser(updatedUser);
@@ -727,6 +971,7 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                     if (type === 'sheet') downloadSheet();
                     else downloadSingle();
                 } catch(e) {
+                    console.error(e);
                     alert("Error applying free credit.");
                 } finally {
                     setLoading(false); setLoadingMsg('');
@@ -745,6 +990,48 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
         if (stepId >= 3 && stepId <= 5) return !!croppedImage;
         if (stepId === 6) return !!sheetImage; // Print needs sheet
         return false;
+    };
+
+    // --- Generate a watermarked preview from any source image (used when BG removal is skipped) ---
+    const generateWatermarkedPreview = async (sourceUrl) => {
+        if (!sourceUrl) return;
+        try {
+            const img = new Image();
+            img.src = sourceUrl;
+            await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // Two-line watermark: "Photo" / "Passport.in" — same style as BG-removed preview
+            ctx.save();
+            ctx.rotate(-Math.PI / 6);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const fs = Math.round(img.width * 0.072);
+            const gap = Math.round(fs * 1.2);
+            ctx.font = `800 ${fs}px Arial, sans-serif`;
+            ctx.fillStyle = 'rgba(200, 200, 210, 0.45)';
+            ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+            ctx.lineWidth = 1;
+            const sx = img.width * 0.52;
+            const sy = img.height * 0.34;
+            for (let y = -img.height * 1.5; y < img.height * 2.5; y += sy) {
+                for (let x = -img.width * 1.5; x < img.width * 2.5; x += sx) {
+                    ctx.strokeText('Photo', x, y - gap / 2);
+                    ctx.fillText('Photo', x, y - gap / 2);
+                    ctx.strokeText('Passport.in', x, y + gap / 2);
+                    ctx.fillText('Passport.in', x, y + gap / 2);
+                }
+            }
+            ctx.restore();
+            setSecurePhotoPreview(canvas.toDataURL('image/jpeg', 1.0));
+        } catch (e) {
+            console.error('Watermark generation failed', e);
+        }
     };
 
     const handleStepClick = (stepId) => {
@@ -939,16 +1226,10 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                                 ) : (
                                     <div className="py-1">
                                         <button
-                                            onClick={() => { setAuthMode('login'); setShowAuthModal(true); setShowUserMenu(false); }}
+                                            onClick={() => { setShowAuthModal(true); setShowUserMenu(false); }}
                                             className="w-full text-left px-4 py-3 text-sm text-indigo-400 hover:bg-slate-700 flex items-center gap-2"
                                         >
-                                            <User size={16} /> Login
-                                        </button>
-                                        <button
-                                            onClick={() => { setAuthMode('signup'); setShowAuthModal(true); setShowUserMenu(false); }}
-                                            className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700"
-                                        >
-                                            Create Account
+                                            <User size={16} /> Sign in with Google
                                         </button>
                                     </div>
                                 )}
@@ -974,35 +1255,18 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
 
                     {/* Auth Modal */}
                     {showAuthModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl relative">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-sm w-full shadow-2xl relative text-center">
                                 <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">✕</button>
-                                <h3 className="text-2xl font-bold mb-6 text-center">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h3>
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Email Address</label>
-                                        <input type="email" required className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"
-                                            value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="name@example.com" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Password</label>
-                                        <input type="password" required className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white focus:border-indigo-500 outline-none"
-                                            value={authPass} onChange={e => setAuthPass(e.target.value)} placeholder="••••••••" />
-                                    </div>
-                                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-colors">
-                                        {authMode === 'login' ? 'Login' : 'Sign Up'}
-                                    </button>
-                                </form>
-
-                                <div className="mt-4 flex items-center">
-                                    <div className="flex-1 border-t border-slate-700"></div>
-                                    <span className="px-3 text-xs text-slate-500 uppercase">Or Continue With</span>
-                                    <div className="flex-1 border-t border-slate-700"></div>
+                                <div className="bg-indigo-600/20 p-4 rounded-full inline-flex mb-4">
+                                    <User size={32} className="text-indigo-400" />
                                 </div>
+                                <h3 className="text-2xl font-bold mb-2">Sign In</h3>
+                                <p className="text-slate-400 text-sm mb-8">Sign in with your Google account to continue. No password needed.</p>
                                 <button
                                     onClick={handleGoogleLogin}
                                     type="button"
-                                    className="w-full mt-4 bg-white text-slate-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors shadow-lg"
+                                    className="w-full bg-white text-slate-900 font-bold py-3 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors shadow-lg text-base"
                                 >
                                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1010,15 +1274,9 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                                     </svg>
-                                    Google
+                                    Continue with Google
                                 </button>
-
-                                <p className="text-center text-sm text-slate-500 mt-6">
-                                    {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
-                                    <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-indigo-400 hover:underline">
-                                        {authMode === 'login' ? 'Sign Up' : 'Login'}
-                                    </button>
-                                </p>
+                                <p className="text-xs text-slate-500 mt-6">By signing in, you agree to our Terms of Service.</p>
                             </div>
                         </div>
                     )}
@@ -1205,11 +1463,13 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                                         <img
                                             src={croppedImage}
                                             alt="Cropped passport photo preview with enhancements applied"
+                                            className="enhance-img shadow-xl"
                                             style={{
-                                                filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+                                                '--ep-brightness': `${brightness}%`,
+                                                '--ep-contrast': `${contrast}%`,
+                                                '--ep-saturation': `${saturation}%`,
                                                 maxHeight: '400px'
                                             }}
-                                            className="shadow-xl"
                                         />
                                     </div>
 
@@ -1262,8 +1522,13 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
 
                                 <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 mb-8">
                                     <div className="relative">
-                                        {/* We just show preview here, actual removal happens on click */}
-                                        <img src={enhancedImage} alt="Enhanced passport photo before background removal" className="max-h-[400px] shadow-lg" />
+                                        {/* Protected — right-click & drag blocked, NO watermark on this step */}
+                                        <ProtectedImage
+                                            src={enhancedImage}
+                                            alt="Enhanced passport photo before background removal"
+                                            className="max-h-[400px] shadow-lg"
+                                            isPro={true}
+                                        />
                                         <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded text-xs backdrop-blur-md">
                                             Current Image
                                         </div>
@@ -1285,6 +1550,14 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                                     <span>Remove Background & Apply Color</span>
                                 </button>
 
+                                {/* Skip BG removal — proceed to step 5 with plain photo, no watermark */}
+                                <button
+                                    className="w-full max-w-md mt-3 text-slate-400 hover:text-white text-sm py-2 border border-slate-700 hover:border-slate-500 rounded-lg transition-colors"
+                                    onClick={() => setStep(5)}
+                                >
+                                    Skip — Use Photo As-Is →
+                                </button>
+
                             </div>
                         )}
 
@@ -1296,16 +1569,19 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                                 </p>
 
                                 <div className="p-2 bg-white rounded-lg shadow-xl mb-8 relative overflow-hidden inline-block">
-                                    <img
-                                        src={bgRemovedImage || enhancedImage || croppedImage}
-                                        alt="Passport photo preview with background removed"
+                                    <ProtectedImage
+                                        src={
+                                            bgRemovedImage
+                                                // BG was removed: pro sees clean image, free sees watermarked canvas
+                                                ? (isPaid ? bgRemovedImage : (securePhotoPreview || bgRemovedImage))
+                                                // BG was NOT removed: show plain image, no watermark for anyone
+                                                : (enhancedImage || croppedImage)
+                                        }
+                                        // Only show DOM watermark overlay when BG was removed AND user is free
+                                        isPro={!bgRemovedImage || isPaid}
+                                        alt="Passport photo secure preview"
                                         className="h-64 w-auto object-cover rounded"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none">
-                                        <div className="transform -rotate-45 text-slate-500/30 text-2xl font-black whitespace-nowrap border-2 border-slate-500/30 p-2">
-                                            PASSPORT STUDIO
-                                        </div>
-                                    </div>
                                 </div>
 
                                 <div className="w-full max-w-md space-y-3">
@@ -1347,20 +1623,16 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                         {step === 6 && !isPaid && (
                             <div className="card text-center max-w-4xl mx-auto">
                                 <h2 className="text-3xl font-bold mb-6">Review & Download</h2>
-                                {sheetImage && (
+                                {secureSheetPreview && (
                                     <div className="relative mb-8 inline-block">
-                                        <div className="bg-white p-2 rounded-lg shadow-2xl relative overflow-hidden">
+                                        <div className="bg-white p-2 rounded-lg shadow-2xl overflow-hidden leading-none">
                                             <img
-                                                src={sheetImage}
-                                                alt="Blurred passport photo sheet preview — purchase to download"
-                                                className="max-h-[500px] w-auto block filter blur-sm transition-all duration-300"
+                                                src={isPaid ? sheetImage : secureSheetPreview}
+                                                alt={isPaid ? "Passport photo sheet" : "Passport photo sheet preview with watermark"}
+                                                className="max-h-[500px] w-auto block select-none pointer-events-none"
+                                                draggable={false}
+                                                onContextMenu={e => e.preventDefault()}
                                             />
-                                            {/* Preview Mode Badge */}
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="bg-black/80 text-white px-6 py-2 rounded-full text-sm font-medium backdrop-blur-md border border-white/10 shadow-xl z-10">
-                                                    Preview Mode
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 )}

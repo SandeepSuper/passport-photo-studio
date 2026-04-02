@@ -17,11 +17,19 @@ html.light-theme {
 }
 
 /* Un-rotate media to keep true colors (e.g. skin tones, user photos) */
-html img, html video, html canvas, html input[type="color"], html .keep-color {
-  filter: hue-rotate(calc(var(--theme-hue, 0deg) * -1)) !important;
+html img:not(.enhance-img), html video, html canvas:not(.enhance-canvas), html input[type="color"], html .keep-color {
+  filter: hue-rotate(calc(var(--theme-hue, 0deg) * -1));
 }
-html.light-theme img, html.light-theme video, html.light-theme canvas, html.light-theme input[type="color"], html.light-theme .keep-color {
-  filter: invert(1) hue-rotate(calc(180deg - var(--theme-hue, 0deg))) !important;
+html.light-theme img:not(.enhance-img), html.light-theme video, html.light-theme canvas:not(.enhance-canvas), html.light-theme input[type="color"], html.light-theme .keep-color {
+  filter: invert(1) hue-rotate(calc(180deg - var(--theme-hue, 0deg)));
+}
+
+/* Enhance preview: combine hue-correction + brightness/contrast/saturation */
+.enhance-img {
+  filter: hue-rotate(calc(var(--theme-hue, 0deg) * -1)) brightness(var(--ep-brightness, 100%)) contrast(var(--ep-contrast, 100%)) saturate(var(--ep-saturation, 100%));
+}
+html.light-theme .enhance-img {
+  filter: invert(1) hue-rotate(calc(180deg - var(--theme-hue, 0deg))) brightness(var(--ep-brightness, 100%)) contrast(var(--ep-contrast, 100%)) saturate(var(--ep-saturation, 100%));
 }
 
 :root {

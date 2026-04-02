@@ -5,10 +5,29 @@ import LandingPage from './LandingPage.jsx'
 import './index.css'
 
 function Root() {
-    const [view, setView] = useState('landing')
+    // Persist view in sessionStorage — so refresh keeps user in studio, not landing page
+    const [view, setView] = useState(() => sessionStorage.getItem('pp_view') || 'landing')
     const [theme, setTheme] = useState(localStorage.getItem('passport_theme') || 'dark')
-
     const [themeColor, setThemeColor] = useState(localStorage.getItem('passport_color') || 'indigo')
+
+    // Navigate to studio and save view
+    const goToApp = () => {
+        sessionStorage.setItem('pp_view', 'app')
+        setView('app')
+    }
+
+    // Navigate home — clear ALL studio session data so next session starts fresh
+    const goHome = () => {
+        const keysToRemove = [
+            'pp_view', 'pp_step',
+            'pp_originalImage', 'pp_croppedImage', 'pp_enhancedImage',
+            'pp_bgRemovedImage', 'pp_sheetImage',
+            'pp_secureSheetPreview', 'pp_securePhotoPreview',
+            'pp_selectedSize', 'pp_brightness', 'pp_contrast', 'pp_saturation',
+        ]
+        keysToRemove.forEach(k => sessionStorage.removeItem(k))
+        setView('landing')
+    }
 
     useEffect(() => {
         if (theme === 'light') {
@@ -27,10 +46,10 @@ function Root() {
     const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark')
 
     if (view === 'landing') {
-        return <LandingPage onStart={() => setView('app')} theme={theme} toggleTheme={toggleTheme} themeColor={themeColor} setThemeColor={setThemeColor} />
+        return <LandingPage onStart={goToApp} theme={theme} toggleTheme={toggleTheme} themeColor={themeColor} setThemeColor={setThemeColor} />
     }
 
-    return <App onHome={() => setView('landing')} theme={theme} toggleTheme={toggleTheme} themeColor={themeColor} setThemeColor={setThemeColor} />
+    return <App onHome={goHome} theme={theme} toggleTheme={toggleTheme} themeColor={themeColor} setThemeColor={setThemeColor} />
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -10,6 +10,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@fingerprintjs/fingerprintjs": "^5.1.0",
         "@imgly/background-removal": "^1.4.5",
         "@imgly/background-removal-node": "^1.4.5",
         "@vladmandic/human": "^3.3.6",
