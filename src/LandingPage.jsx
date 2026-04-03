@@ -158,26 +158,14 @@ export default function LandingPage({ onStart, theme, toggleTheme, themeColor, s
                     
                     {/* Video Player Container */}
                     <div className="relative w-full aspect-video rounded-3xl bg-slate-900 border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group flex items-center justify-center">
-                        {/* 
-                            TODO: USER INSTRUCTION
-                            To add your YouTube video, replace the <img> below with an <iframe>.
-                            Example:
-                            <iframe className="w-full h-full" src="https://www.youtube.com/embed/YOUR_VIDEO_ID" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                        */}
-                        <img 
-                            src="https://images.unsplash.com/photo-1542744094-3a31f272c490?auto=format&fit=crop&q=80&w=1200&h=675" 
-                            alt="Video Thumbnail Placeholder" 
-                            className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-40 transition-opacity duration-300" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
-                        
-                        {/* Play Button Overlay */}
-                        <div className="relative z-10 w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer border border-white/20 shadow-2xl group-hover:scale-110 group-hover:bg-indigo-600/50 transition-all duration-300 hover:border-indigo-400">
-                            <div className="w-0 h-0 border-y-[15px] border-y-transparent border-l-[25px] border-l-white ml-2"></div>
-                        </div>
-                        <div className="absolute top-4 left-6 z-10">
-                            <span className="bg-red-600/90 text-white text-xs font-bold px-3 py-1 rounded">MOCK VIDEO</span>
-                        </div>
+                        <iframe 
+                            className="w-full h-full absolute inset-0 rounded-3xl" 
+                            src="https://www.youtube.com/embed/osckfHXCzVg?rel=0" 
+                            title="How to create passport photo on photopassport.in" 
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                            allowFullScreen>
+                        </iframe>
                     </div>
                 </section>
 
