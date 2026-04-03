@@ -149,6 +149,38 @@ export default function LandingPage({ onStart, theme, toggleTheme, themeColor, s
                     </div>
                 </div>
 
+                {/* Video Tutorial Section */}
+                <section className="w-full max-w-5xl mx-auto px-6 mt-16 md:mt-24 z-20">
+                    <div className="flex flex-col items-center mb-10">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4 text-center">Watch How It Works</h2>
+                        <p className="text-slate-400 text-lg text-center max-w-2xl">See how easily you can create a perfect passport photo and print sheet in less than a minute.</p>
+                    </div>
+                    
+                    {/* Video Player Container */}
+                    <div className="relative w-full aspect-video rounded-3xl bg-slate-900 border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group flex items-center justify-center">
+                        {/* 
+                            TODO: USER INSTRUCTION
+                            To add your YouTube video, replace the <img> below with an <iframe>.
+                            Example:
+                            <iframe className="w-full h-full" src="https://www.youtube.com/embed/YOUR_VIDEO_ID" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                        */}
+                        <img 
+                            src="https://images.unsplash.com/photo-1542744094-3a31f272c490?auto=format&fit=crop&q=80&w=1200&h=675" 
+                            alt="Video Thumbnail Placeholder" 
+                            className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-40 transition-opacity duration-300" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                        
+                        {/* Play Button Overlay */}
+                        <div className="relative z-10 w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer border border-white/20 shadow-2xl group-hover:scale-110 group-hover:bg-indigo-600/50 transition-all duration-300 hover:border-indigo-400">
+                            <div className="w-0 h-0 border-y-[15px] border-y-transparent border-l-[25px] border-l-white ml-2"></div>
+                        </div>
+                        <div className="absolute top-4 left-6 z-10">
+                            <span className="bg-red-600/90 text-white text-xs font-bold px-3 py-1 rounded">MOCK VIDEO</span>
+                        </div>
+                    </div>
+                </section>
+
                 {/* How it Works Walkthrough Section */}
                 <section className="w-full bg-slate-900/50 border-y border-slate-800/50 backdrop-blur-md py-24 relative z-10 mt-16 md:mt-32">
                     <div className="max-w-6xl mx-auto px-6">

@@ -149,14 +149,26 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
     const [secureSheetPreview, setSecureSheetPreviewRaw] = useState(() => sessionStorage.getItem('pp_secureSheetPreview') || null);
     const [securePhotoPreview, setSecurePhotoPreviewRaw] = useState(() => sessionStorage.getItem('pp_securePhotoPreview') || null);
 
-    // Auto-persist helpers
-    const setOriginalImage = (v) => { v ? sessionStorage.setItem('pp_originalImage', v) : sessionStorage.removeItem('pp_originalImage'); setOriginalImageRaw(v); };
-    const setCroppedImage  = (v) => { v ? sessionStorage.setItem('pp_croppedImage', v) : sessionStorage.removeItem('pp_croppedImage'); setCroppedImageRaw(v); };
-    const setEnhancedImage = (v) => { v ? sessionStorage.setItem('pp_enhancedImage', v) : sessionStorage.removeItem('pp_enhancedImage'); setEnhancedImageRaw(v); };
-    const setBgRemovedImage = (v) => { v ? sessionStorage.setItem('pp_bgRemovedImage', v) : sessionStorage.removeItem('pp_bgRemovedImage'); setBgRemovedImageRaw(v); };
-    const setSheetImage    = (v) => { v ? sessionStorage.setItem('pp_sheetImage', v) : sessionStorage.removeItem('pp_sheetImage'); setSheetImageRaw(v); };
-    const setSecureSheetPreview = (v) => { v ? sessionStorage.setItem('pp_secureSheetPreview', v) : sessionStorage.removeItem('pp_secureSheetPreview'); setSecureSheetPreviewRaw(v); };
-    const setSecurePhotoPreview = (v) => { v ? sessionStorage.setItem('pp_securePhotoPreview', v) : sessionStorage.removeItem('pp_securePhotoPreview'); setSecurePhotoPreviewRaw(v); };
+    // Auto-persist helpers using try-catch to prevent QuotaExceededError crashes for large images
+    const safeSetItem = (key, value) => {
+        if (!value) {
+            sessionStorage.removeItem(key);
+            return;
+        }
+        try {
+            sessionStorage.setItem(key, value);
+        } catch (e) {
+            console.warn(`Could not persist ${key} to sessionStorage (likely QuotaExceededError). It will remain in memory.`);
+        }
+    };
+
+    const setOriginalImage      = (v) => { safeSetItem('pp_originalImage', v); setOriginalImageRaw(v); };
+    const setCroppedImage       = (v) => { safeSetItem('pp_croppedImage', v); setCroppedImageRaw(v); };
+    const setEnhancedImage      = (v) => { safeSetItem('pp_enhancedImage', v); setEnhancedImageRaw(v); };
+    const setBgRemovedImage     = (v) => { safeSetItem('pp_bgRemovedImage', v); setBgRemovedImageRaw(v); };
+    const setSheetImage         = (v) => { safeSetItem('pp_sheetImage', v); setSheetImageRaw(v); };
+    const setSecureSheetPreview = (v) => { safeSetItem('pp_secureSheetPreview', v); setSecureSheetPreviewRaw(v); };
+    const setSecurePhotoPreview = (v) => { safeSetItem('pp_securePhotoPreview', v); setSecurePhotoPreviewRaw(v); };
 
     // Crop State
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -1088,10 +1100,10 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                     <div className="relative">
                         <button
                             onClick={() => setShowUserMenu(!showUserMenu)}
-                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                            className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-1.5 rounded-full transition-colors"
                         >
-                            <div className="bg-indigo-500 rounded-full p-1">
-                                <User size={20} />
+                            <div className="bg-indigo-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white uppercase shadow-inner">
+                                {user && user.email ? user.email.charAt(0) : <User size={18} />}
                             </div>
                         </button>
                     {/* Simplified Mobile Dropdown */}
@@ -1195,12 +1207,11 @@ function App({ onHome, theme, toggleTheme, themeColor, setThemeColor }) {
                         <div className="relative">
                             <button
                                 onClick={() => setShowUserMenu(!showUserMenu)}
-                                className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-2 rounded-full transition-colors"
+                                className="flex items-center gap-2 text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 p-1.5 rounded-full transition-colors"
                             >
-                                <div className="bg-indigo-500 rounded-full p-1">
-                                    <User size={20} />
+                                <div className="bg-indigo-500 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white uppercase shadow-inner">
+                                    {user && user.email ? user.email.charAt(0) : <User size={18} />}
                                 </div>
-                                {user && <span className="text-sm font-medium pr-2">{user.email.split('@')[0]}</span>}
                             </button>
 
                         {/* Dropdown Menu */}
