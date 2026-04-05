@@ -16,11 +16,11 @@ html.light-theme {
   filter: invert(1) hue-rotate(calc(180deg + var(--theme-hue, 0deg)));
 }
 
-/* Un-rotate media to keep true colors (e.g. skin tones, user photos) */
-html img:not(.enhance-img), html video, html canvas:not(.enhance-canvas), html input[type="color"], html .keep-color {
+/* Un-rotate media to keep true colors (e.g. skin tones, user photos, iframes) */
+html img:not(.enhance-img), html video, html iframe, html canvas:not(.enhance-canvas), html input[type="color"], html .keep-color {
   filter: hue-rotate(calc(var(--theme-hue, 0deg) * -1));
 }
-html.light-theme img:not(.enhance-img), html.light-theme video, html.light-theme canvas:not(.enhance-canvas), html.light-theme input[type="color"], html.light-theme .keep-color {
+html.light-theme img:not(.enhance-img), html.light-theme video, html.light-theme iframe, html.light-theme canvas:not(.enhance-canvas), html.light-theme input[type="color"], html.light-theme .keep-color {
   filter: invert(1) hue-rotate(calc(180deg - var(--theme-hue, 0deg)));
 }
 
@@ -147,6 +147,7 @@ button:focus-visible {
 
 .light-theme img,
 .light-theme video,
+.light-theme iframe,
 .light-theme canvas,
 .light-theme input[type="color"] {
   filter: invert(1) hue-rotate(180deg);
