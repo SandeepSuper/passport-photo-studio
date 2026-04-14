@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDcMuUNA07R7I1QVbcjFzfJ6eNUcLktsNI",
-  authDomain: "photopassport.in",
+  authDomain: "photo-app-30f33.firebaseapp.com",
   projectId: "photo-app-30f33",
   storageBucket: "photo-app-30f33.firebasestorage.app",
   messagingSenderId: "701768114705",
