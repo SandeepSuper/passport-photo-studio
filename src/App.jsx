@@ -12,8 +12,8 @@ import fpPromise from '@fingerprintjs/fingerprintjs';
 // Initialize the fingerprint agent at application startup.
 const fpInstancePromise = fpPromise.load();
 
-// AWS API Gateway URL for Razorpay handling
-const API_URL = 'https://ihdzz1fxmg.execute-api.ap-south-1.amazonaws.com';
+// Razorpay backend: Vercel Serverless Functions in /api (same domain, no CORS needed)
+const API_URL = '/api';
 
 // ====== PRICING CONFIGURATION ======
 // Note: Razorpay accepts amounts in paise (Multiply Rupees by 100)
